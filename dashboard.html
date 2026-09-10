@@ -1,0 +1,1046 @@
+<!doctype html>
+
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Fish Feeder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+
+  <style>
+    :root{--bg:#07131b;--panel:rgba(15,32,42,.68);--line:rgba(255,255,255,.1);--text:#effcff;--muted:#98b6c0;--green:#35d07f;--blue:#4ca7ff;--red:#ff6174;--gold:#ffc44b;--shadow:0 22px 50px rgba(0,0,0,.28)}*{box-sizing:border-box}body{margin:0;min-width:320px;background:var(--bg);color:var(--text);font-family:Poppins,sans-serif;overflow-x:hidden}.app-shell{width:100%;min-height:calc(100 * min(var(--vh,1vh),1vh));position:relative;isolation:isolate;padding:28px 5vw 42px;background:radial-gradient(circle at 12% 10%,#0c5654 0,transparent 31%),radial-gradient(circle at 90% 25%,#143c78 0,transparent 30%),linear-gradient(130deg,#061017,#09232a 48%,#091420);overflow:hidden}.app-shell:before,.app-shell:after{content:"";position:absolute;border-radius:999px;filter:blur(9px);opacity:.45;z-index:-1;animation:float 14s ease-in-out infinite}.app-shell:before{width:280px;height:280px;background:#187b69;top:48%;left:-120px}.app-shell:after{width:340px;height:340px;background:#214b96;right:-150px;top:-85px;animation-delay:-6s}@keyframes float{50%{transform:translate(45px,-35px) scale(1.1)}}.nav-bar{max-width:1440px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:20px;animation:fade .6s ease both}.brand{display:flex;align-items:center;gap:14px}.brand-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#31d49a,#2586dd);box-shadow:0 10px 25px rgba(33,174,142,.3);font-size:23px}.brand h1{margin:0;font-size:21px;font-weight:700;line-height:1.2}.brand p{margin:2px 0 0;color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}.connection{display:flex;align-items:center;gap:9px;padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(6,18,24,.38);color:#bdeccd;font-size:13px}.dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:#ffc44b;
+    box-shadow:0 0 0 0 rgba(255,196,75,.7);
+    animation:pulse 1.8s infinite;
+    }@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(53,208,127,0)}100%{box-shadow:0 0 0 0 rgba(53,208,127,0)}}.dashboard-grid{max-width:1440px;margin:27px auto 0;display:grid;grid-template-columns:1.05fr 1.25fr .9fr;gap:20px}.glass-card{border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:24px;box-shadow:var(--shadow);padding:23px;transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease;animation:slide .65s ease both}.glass-card:hover{transform:translateY(-4px);border-color:rgba(117,221,219,.28);box-shadow:0 27px 55px rgba(0,0,0,.36)}@keyframes fade{from{opacity:0}to{opacity:1}}@keyframes slide{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}.clock-card{grid-column:span 1}.feed-card{grid-column:span 1}.status-card{grid-column:span 1}.scheduler-card{grid-column:span 2}.history-card{grid-column:span 1}.settings-card{grid-column:span 1}.stats-card{grid-column:span 2}.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:21px}.card-title{margin:0;font-size:15px;font-weight:600}.title-icon{color:var(--blue);margin-right:9px}.small-tag{font-size:11px;color:var(--muted);padding:5px 9px;border:1px solid var(--line);border-radius:999px}.clock-time{font-size:clamp(39px,5vw,62px);font-weight:700;letter-spacing:-.055em;line-height:1;margin:4px 0 17px;background:linear-gradient(90deg,#fff,#8ad8ff);-webkit-background-clip:text;background-clip:text;color:transparent}.clock-meta{display:flex;gap:9px;flex-wrap:wrap}.clock-meta span{font-size:12px;color:white;padding:7px 10px;background:rgba(255,255,255,.055);border-radius:9px}.feed-area{text-align:center;padding:4px 0}.feed-orb{width:82px;height:82px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;background:radial-gradient(circle at 32% 28%,#80ffd0,#20a968 48%,#0c6848);box-shadow:0 0 0 9px rgba(53,208,127,.06),0 0 35px rgba(53,208,127,.3);font-size:31px;color:#fff}.feed-button{width:100%;position:relative;overflow:hidden;border:0;border-radius:16px;background:linear-gradient(135deg,#35d07f,#15995e);padding:16px;color:#062214;font:700 16px Poppins,sans-serif;cursor:pointer;box-shadow:0 12px 22px rgba(20,164,97,.24);transition:transform .2s,filter .2s}.feed-button:hover{filter:brightness(1.08);transform:translateY(-2px)}.feed-button:disabled{opacity:.65;cursor:not-allowed;transform:none}.feed-button i{margin-right:8px}.feed-button .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);animation:ripple .65s linear;pointer-events:none}@keyframes ripple{to{transform:scale(4);opacity:0}}.feed-note{margin:14px 0 0;color:var(--muted);font-size:12px}.spinner{display:none;width:16px;height:16px;border:2px solid rgba(6,34,20,.35);border-top-color:#062214;border-radius:50%;animation:spin .75s linear infinite;vertical-align:-3px;margin-right:8px}@keyframes spin{to{transform:rotate(360deg)}}.feeding .spinner{display:inline-block}.feeding .button-label{display:none}.status-list{display:grid;gap:12px}.status-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.07)}.status-row:last-child{border:0}.status-key{color:var(--muted);font-size:13px}.status-key i{width:19px;color:var(--blue)}.status-value{font-size:13px;font-weight:600}.status-value.online{color:var(--green)}.schedule-form{display:flex;gap:11px;margin-bottom:17px}.time-input{flex:1;min-width:0;border:1px solid var(--line);border-radius:13px;padding:12px 13px;background:rgba(0,0,0,.15);color:var(--text);font:500 14px Poppins,sans-serif;outline:none}.time-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(76,167,255,.13)}.blue-button,.red-button,.save-button{border:0;border-radius:13px;padding:12px 15px;color:white;font:600 13px Poppins,sans-serif;cursor:pointer;transition:transform .2s,filter .2s}.blue-button{background:linear-gradient(135deg,#3998ff,#3065e8)}.red-button{background:rgba(255,97,116,.13);color:#ff9baa;border:1px solid rgba(255,97,116,.22);padding:8px 10px}.save-button{width:100%;margin-top:20px;background:linear-gradient(135deg,#3998ff,#3065e8)}.blue-button:hover,.red-button:hover,.save-button:hover{transform:translateY(-2px);filter:brightness(1.1)}.schedule-list{display:grid;gap:9px;max-height:230px;overflow:auto;padding-right:4px}.schedule-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:13px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06)}.schedule-time{font-weight:700;letter-spacing:.02em;flex:1}.schedule-actions{display:flex;gap:7px}.icon-button{width:32px;height:32px;border:0;border-radius:10px;background:rgba(76,167,255,.13);color:#8cc7ff;cursor:pointer}.icon-button.delete{background:rgba(255,97,116,.12);color:#ff96a4}.empty-text{margin:8px 0;color:var(--muted);font-size:13px;text-align:center;padding:17px}.timeline{max-height:235px;overflow:auto;padding-right:4px}.history-item{position:relative;padding:0 0 16px 25px;font-size:12px}.history-item:before{content:"";position:absolute;left:5px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(53,208,127,.7)}.history-item.auto:before{background:var(--blue);box-shadow:0 0 12px rgba(76,167,255,.7)}.history-item:not(:last-child):after{content:"";position:absolute;left:9px;top:16px;height:calc(100% - 4px);width:1px;background:rgba(255,255,255,.13)}.history-name{font-weight:600}.history-date{display:block;color:var(--muted);margin-top:2px;font-size:11px}.setting{margin-bottom:17px}.setting-top{display:flex;justify-content:space-between;gap:12px;margin-bottom:9px;font-size:13px}.setting-top span:last-child{color:var(--blue);font-weight:600}.range{width:100%;accent-color:var(--green)}.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;font-size:13px}.switch{position:relative;width:45px;height:25px}.switch input{opacity:0;width:0;height:0}.switch span{position:absolute;inset:0;border-radius:99px;background:#344b55;cursor:pointer;transition:.25s}.switch span:before{content:"";position:absolute;width:19px;height:19px;left:3px;top:3px;border-radius:50%;background:white;transition:.25s}.switch input:checked+span{background:var(--green)}.switch input:checked+span:before{transform:translateX(20px)}.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat-box{padding:17px 13px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06)}.stat-value{font-size:27px;font-weight:700;line-height:1;color:#fff}.stat-label{margin-top:8px;color:var(--muted);font-size:11px;line-height:1.3}.toast{position:fixed;right:22px;bottom:22px;z-index:10;display:flex;align-items:center;gap:11px;max-width:min(390px,calc(100% - 44px));padding:14px 16px;border:1px solid rgba(53,208,127,.25);background:#0d2b2b;color:#dfffee;border-radius:15px;box-shadow:0 18px 40px rgba(0,0,0,.32);transform:translateY(120px);opacity:0;transition:.35s}.toast.show{transform:translateY(0);opacity:1}.toast.error{border-color:rgba(255,97,116,.3);background:#351d26;color:#ffe3e7}.toast i{color:var(--green)}.toast.error i{color:var(--red)}body.light-mode{--bg:#e7f3f5;--panel:rgba(255,255,255,.72);--line:rgba(11,46,57,.12);--text:#0e2932;--muted:#55717a;--shadow:0 18px 45px rgba(24,70,80,.14)}body.light-mode .app-shell{background:radial-gradient(circle at 12% 10%,#a9eee5 0,transparent 32%),radial-gradient(circle at 90% 25%,#bdd8ff 0,transparent 32%),linear-gradient(130deg,#edf9f8,#daeaf5)}body.light-mode .clock-time{background:linear-gradient(90deg,#0e2932,#267eb6);-webkit-background-clip:text;background-clip:text}body.light-mode .time-input{background:#fff;color:#0e2932}@media(max-width:1080px){.dashboard-grid{grid-template-columns:1fr 1fr}.clock-card,.feed-card,.status-card,.history-card,.settings-card{grid-column:span 1}.scheduler-card,.stats-card{grid-column:span 2}}@media(max-width:680px){.app-shell{padding:20px 16px 30px}.nav-bar{align-items:flex-start}.connection{font-size:11px;padding:8px 10px}.brand h1{font-size:17px}.brand-icon{width:43px;height:43px}.dashboard-grid{grid-template-columns:1fr;margin-top:20px;gap:15px}.glass-card,.clock-card,.feed-card,.status-card,.scheduler-card,.history-card,.settings-card,.stats-card{grid-column:span 1;padding:19px;border-radius:20px}.schedule-form{flex-wrap:wrap}.schedule-form .blue-button{flex:1}.stats-grid{grid-template-columns:repeat(2,1fr)}.clock-time{font-size:48px}.toast{right:16px;bottom:16px;max-width:calc(100% - 32px)}} 
+
+.control-buttons{
+    display:flex;
+    gap:12px;
+    margin-top:15px;
+}
+
+.load-btn{
+    flex:1;
+    background:#1c1c1c;
+    color:white;
+}
+
+.stop-btn{
+    flex:1;
+    background:#1c1c1c;
+    color:white;
+}
+.load-btn{
+    box-shadow:
+        0 0 10px rgba(145, 145, 145, 0.5),
+        0 0 25px rgba(68, 68, 68, 0.35),
+        0 10px 25px rgba(0,0,0,.3);
+}
+
+.stop-btn{
+    box-shadow:
+        0 0 10px rgba(239,68,68,.5),
+        0 0 25px rgba(239,68,68,.35),
+        0 10px 25px rgba(0,0,0,.3);
+}
+
+.logout-btn{
+    padding:10px 18px;
+    border:none;
+    border-radius:999px;
+    cursor:pointer;
+    font:600 14px Poppins,sans-serif;
+    color:white;
+    background:linear-gradient(135deg,#ff6174,#e63946);
+    box-shadow:0 10px 20px rgba(255,97,116,.3);
+    transition:.3s;
+}
+
+.logout-btn:hover{
+    transform:translateY(-2px);
+    filter:brightness(1.1);
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+<link rel="icon" type="image/png" href="logo.png">
+ </head>
+ <body data-template-id="__page-root" style="background: rgb(7, 19, 27);">
+  <div class="app-shell">
+   <header class="nav-bar">
+    <div class="brand">
+     <div class="brand-icon">
+      <i class="fa-solid fa-fish"></i>
+     </div>
+     <div>
+      <h1 data-template-id="app-title" class="canva-text" style="color: rgb(239, 252, 255); font-weight: 700; font-style: normal; font-size: 32px;">Smart Fish Feeder</h1>
+      <p data-template-id="app-subtitle" class="canva-text" style="color: rgb(152, 182, 192); font-weight: 500; font-style: normal; font-size: 16px;">IoT Dashboard</p>
+     </div>
+    </div>
+   <div style="display:flex;align-items:center;gap:12px;">
+    <div class="connection">
+    <span id="connectionDot" class="dot"></span>
+<span id="connectionText">Checking Device...</span>
+</div>
+    <button id="logoutBtn" class="logout-btn">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Logout
+    </button>
+</div>
+    </header>
+    <main class="dashboard-grid">
+    <section data-template-id="clock-card" class="glass-card clock-card canva-card" style="background: rgba(15, 32, 42, 0.68);">
+     <div class="card-head">
+      <h2 data-template-id="clock-title" class="card-title canva-text" style="color: rgb(239, 252, 255); font-weight: 600; font-style: normal; font-size: 24px;">Live Clock</h2><span data-template-id="clock-tag" class="small-tag canva-tag" style="background: rgba(255, 255, 255, 0.055); color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Live</span>
+     </div>
+     <div id="clockTime" class="clock-time" aria-live="polite">
+      00:00:00
+     </div>
+     <div class="clock-meta">
+      <span id="clockDay">Friday</span><span id="clockDate">31 July 2026</span>
+     </div>
+    </section>
+    <section data-template-id="feed-card" class="glass-card feed-card canva-card" style="background: rgba(15, 32, 42, 0.68);">
+     <div class="card-head">
+      <h2 data-template-id="feed-title" class="card-title canva-text" style="color: rgb(239, 252, 255); font-weight: 600; font-style: normal; font-size: 24px;">Feed Control</h2><span data-template-id="feed-tag" class="small-tag canva-tag" style="background: rgba(255, 255, 255, 0.055); color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Ready</span>
+     </div>
+     <div class="feed-area">
+      <div class="feed-orb">
+       <i class="fa-solid fa-bowl-food"></i>
+      </div><button id="feedButton" data-template-id="feed-button" class="feed-button canva-button" type="button" style="background: linear-gradient(135deg, rgb(53, 208, 127), rgb(21, 153, 94)); color: rgb(6, 34, 20);"><span class="spinner"></span><span class="button-label"><i class="fa-solid fa-play"></i></span><span class="button-label" data-template-id="feed-button-label" style="color: rgb(6, 34, 20); font-weight: 700; font-style: normal; font-size: 16px;">Feed Now</span><span id="feedingText" hidden="">Feeding...</span></button>
+      <p data-template-id="feed-note" class="feed-note canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Tap to dispense a fresh serving</p>
+      <div class="control-buttons">
+<button id="loadBtn" class="feed-button load-btn">
+    🌾 Load Food
+</button>
+<button id="stopBtn" class="feed-button stop-btn">
+    🛑 Stop Loading
+</button>
+</div>
+     </div>
+    </section>
+    <section data-template-id="status-card" class="glass-card status-card canva-card" style="background: rgba(15, 32, 42, 0.68);">
+     <div class="card-head">
+      <h2 data-template-id="status-title" class="card-title canva-text" style="color: rgb(239, 252, 255); font-weight: 600; font-style: normal; font-size: 24px;">Device Status</h2>
+     </div>
+     <div class="status-list">
+      <div class="status-row">
+       <span data-template-id="wifi-label" class="status-key canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">WiFi Status</span><span id="wifiStatus" class="status-value">Waiting for device</span>
+      </div>
+      <div class="status-row">
+       <span data-template-id="motor-label" class="status-key canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Motor Status</span><span id="motorStatus" class="status-value" style="color:#98b6c0;">Not Connected</span>
+      </div>
+      <div class="status-row">
+       <span data-template-id="schedule-count-label" class="status-key canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Schedules</span><span id="scheduleCount" class="status-value">0</span>
+      </div>
+      <div class="status-row">
+       <span data-template-id="last-feed-label" class="status-key canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Last Feed</span><span id="lastFeed" class="status-value">None</span>
+      </div>
+     </div>
+    </section>
+    <section data-template-id="scheduler-card" class="glass-card scheduler-card canva-card" style="background: rgba(15, 32, 42, 0.68);">
+     <div class="card-head">
+      <h2 data-template-id="scheduler-title" class="card-title canva-text" style="color: rgb(239, 252, 255); font-weight: 600; font-style: normal; font-size: 24px;">Feeding Scheduler</h2><span data-template-id="scheduler-tag" class="small-tag canva-tag" style="background: rgba(255, 255, 255, 0.055); color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Your schedules</span>
+     </div>
+     <form id="scheduleForm" class="schedule-form"><label class="sr-only" for="scheduleTime">Feed time</label> <input id="scheduleTime" class="time-input" type="time" required=""> <button data-template-id="add-schedule-button" class="blue-button canva-button" type="submit" style="background: linear-gradient(135deg, rgb(57, 152, 255), rgb(48, 101, 232)); color: rgb(255, 255, 255);"><i class="fa-solid fa-plus"></i> <span data-template-id="add-schedule-label" class="canva-text" style="color: rgb(255, 255, 255); font-weight: 600; font-style: normal; font-size: 16px;">Add Schedule</span></button>
+     </form>
+     <div id="scheduleList" class="schedule-list"></div>
+     <p id="scheduleEmpty" data-template-id="schedule-empty" class="empty-text canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Loading schedules...</p>
+    </section>
+    <section data-template-id="settings-card" class="glass-card settings-card canva-card" style="background: rgba(15, 32, 42, 0.68);">
+     <div class="card-head">
+      <h2 data-template-id="settings-title" class="card-title canva-text" style="color: rgb(239, 252, 255); font-weight: 600; font-style: normal; font-size: 24px;">Feeder Settings</h2>
+     </div>
+     <div class="setting">
+      <div class="setting-top">
+       <span data-template-id="duration-label" class="canva-text" style="color: rgb(239, 252, 255); font-weight: 400; font-style: normal; font-size: 16px;">Feed Duration</span><span id="durationValue">2 sec</span>
+      </div><input id="durationRange" class="range" type="range" min="1" max="10" value="2">
+     </div>
+     <div class="setting">
+      <div class="setting-top">
+       <span data-template-id="speed-label" class="canva-text" style="color: rgb(239, 252, 255); font-weight: 400; font-style: normal; font-size: 16px;">Speed</span><span id="speedValue">50%</span>
+      </div><input id="speedRange" class="range" type="range" min="0" max="100" value="50">
+     </div>
+     <div class="toggle-row">
+    <span class="canva-text">Forward Direction</span>
+    <label class="switch">
+        <input type="checkbox" id="reverseMotorToggle">
+        <span></span>
+    </label>
+    </div>
+     <div class="toggle-row">
+      <span data-template-id="dark-mode-label" class="canva-text" style="color: rgb(239, 252, 255); font-weight: 400; font-style: normal; font-size: 16px;">Dark Mode</span><label class="switch"><input id="darkModeToggle" type="checkbox" checked=""><span></span></label>
+     </div><button id="saveSettings" data-template-id="save-settings-button" class="save-button canva-button" type="button" style="background: linear-gradient(135deg, rgb(57, 152, 255), rgb(48, 101, 232)); color: rgb(255, 255, 255);"><i class="fa-solid fa-floppy-disk"></i> <span data-template-id="save-settings-label" class="canva-text" style="color: rgb(255, 255, 255); font-weight: 600; font-style: normal; font-size: 16px;">Save Settings</span></button>
+    </section>
+
+    <section data-template-id="stats-card" class="glass-card stats-card canva-card" style="background: rgba(15, 32, 42, 0.68);">
+     <div class="card-head">
+      <h2 data-template-id="stats-title" class="card-title canva-text" style="color: rgb(239, 252, 255); font-weight: 600; font-style: normal; font-size: 24px;">Feeding Statistics</h2><span data-template-id="stats-tag" class="small-tag canva-tag" style="background: rgba(255, 255, 255, 0.055); color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Activity</span>
+     </div>
+     <div class="stats-grid">
+      <div class="stat-box">
+       <div id="manualCount" class="stat-value">
+        0
+       </div>
+       <div data-template-id="manual-stat-label" class="stat-label canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Total Manual Feeds</div>
+      </div>
+      <div class="stat-box">
+       <div id="autoCount" class="stat-value">
+        0
+       </div>
+       <div data-template-id="auto-stat-label" class="stat-label canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Total Automatic Feeds</div>
+      </div>
+      <div class="stat-box">
+       <div id="todayCount" class="stat-value">
+        0
+       </div>
+       <div data-template-id="today-stat-label" class="stat-label canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Today's Feed Count</div>
+      </div>
+      <div class="stat-box">
+       <div id="weekCount" class="stat-value">
+        0
+       </div>
+       <div data-template-id="week-stat-label" class="stat-label canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">Weekly Feed Count</div>
+      </div>
+     </div>
+    </section>
+     <section data-template-id="history-card" class="glass-card history-card canva-card" style="background: rgba(15, 32, 42, 0.68);">
+     <div class="card-head">
+    <h2 data-template-id="history-title" class="card-title canva-text">Feed History</h2>
+    <button id="deleteHistoryBtn" class="red-button">
+    <i class="fa-solid fa-trash"></i> Delete History</button>     
+    </div>
+    <div id="historyList" class="timeline"></div>
+    <p id="historyEmpty" data-template-id="history-empty" class="empty-text canva-text" style="color: rgb(152, 182, 192); font-weight: 400; font-style: normal; font-size: 16px;">No feed activity recorded yet.</p>
+    </section>
+   </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite">
+   <i id="toastIcon" class="fa-solid fa-circle-check"></i><span id="toastMessage"></span>
+  </div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyAhBi4WrhwAurgFqD-m6N0NZ-wPjIwUhsI",
+authDomain:"smartfeeder-v01.firebaseapp.com",
+databaseURL:"https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app",
+projectId:"smartfeeder-v01",
+storageBucket:"smartfeeder-v01.firebasestorage.app",
+messagingSenderId:"371940890381",
+appId:"1:371940890381:web:ce1d2e6e64fc0d6bc5c244",
+measurementId:"G-D4DST3NG6E"
+};
+
+if(!firebase.apps.length){
+firebase.initializeApp(firebaseConfig);
+}
+const auth=firebase.auth();
+const database=firebase.database();
+
+auth.onAuthStateChanged(user => {
+
+    if (!user) {
+        window.location.replace("login.html");
+        return;
+    }
+
+    const loginTime = Number(
+        localStorage.getItem("fishFeederLoginTime")
+    );
+
+    if (!loginTime) {
+        auth.signOut().then(() => {
+            window.location.replace("login.html");
+        });
+        return;
+    }
+
+    const elapsed = Date.now() - loginTime;
+    const remaining = (30 * 60 * 1000) - elapsed;
+
+    if (remaining <= 0) {
+
+        localStorage.removeItem("fishFeederLoginTime");
+
+        auth.signOut().then(() => {
+            window.location.replace("login.html");
+        });
+
+        return;
+    }
+
+    setTimeout(() => {
+
+        localStorage.removeItem("fishFeederLoginTime");
+
+        auth.signOut().then(() => {
+            window.location.replace("login.html");
+        });
+
+    }, remaining);
+
+});
+const storageKeys={
+settings:"fishFeederSettings"
+};
+
+let schedules=[];
+let history=[];
+
+let settings=JSON.parse(localStorage.getItem(storageKeys.settings)||'{"duration":2,"speed":50,"darkMode":true,"reverseMotor":false}');
+let editingSchedule=null;
+const DELETE_PASSWORD="fish@123";
+const $=id=>document.getElementById(id);
+
+let wemosOnline=false;
+let lastSeenTime=0;
+let currentMotorStatus="OFF";
+
+function formatDate(date){
+return new Intl.DateTimeFormat("en-IN",{
+day:"numeric",
+month:"short",
+year:"numeric",
+hour:"2-digit",
+minute:"2-digit"
+}).format(date);
+}
+
+function showToast(message,type="success"){
+const toast=$("toast");
+$("toastMessage").textContent=message;
+$("toastIcon").className=
+type==="error"
+?"fa-solid fa-circle-exclamation"
+:"fa-solid fa-circle-check";
+toast.classList.toggle("error",type==="error");
+toast.classList.add("show");
+clearTimeout(showToast.timer);
+showToast.timer=setTimeout(()=>{
+toast.classList.remove("show");
+},3200);
+}
+
+function updateClock(){
+const now=new Date();
+
+$("clockTime").textContent=
+now.toLocaleTimeString("en-IN",{hour12:false});
+
+$("clockDay").textContent=
+now.toLocaleDateString("en-IN",{weekday:"long"});
+
+$("clockDate").textContent=
+now.toLocaleDateString("en-IN",{
+day:"numeric",
+month:"long",
+year:"numeric"
+});
+}
+
+function saveSchedules(){
+const data={};
+schedules.forEach((time,index)=>{
+data["schedule"+index]=time;
+});
+return database.ref("schedules").set(data);
+}
+
+function loadSchedules(){
+$("scheduleEmpty").textContent="Loading schedules...";
+$("scheduleEmpty").style.display="block";
+database.ref("schedules").on("value",snapshot=>{
+schedules=[];
+if(snapshot.exists()){
+snapshot.forEach(child=>{
+const time=child.val();
+if(typeof time==="string"&&/^\d{2}:\d{2}$/.test(time)){
+schedules.push(time);
+}
+});
+}
+schedules.sort();
+renderSchedules();
+});
+}
+
+function renderSchedules(){
+const list=$("scheduleList");
+list.innerHTML="";
+
+schedules.sort();
+
+if(schedules.length===0){
+$("scheduleEmpty").textContent="No schedules available.";
+$("scheduleEmpty").style.display="block";
+}else{
+$("scheduleEmpty").style.display="none";
+}
+
+schedules.forEach(time=>{
+const item=document.createElement("div");
+item.className="schedule-item";
+
+const display=new Date(
+`2000-01-01T${time}:00`
+).toLocaleTimeString("en-IN",{
+hour:"2-digit",
+minute:"2-digit",
+hour12:true
+});
+
+item.innerHTML=`
+<span class="schedule-time">${display}</span>
+<div class="schedule-actions">
+<button class="icon-button" type="button" aria-label="Edit ${display}">
+<i class="fa-solid fa-pen"></i>
+</button>
+<button class="icon-button delete" type="button" aria-label="Delete ${display}">
+<i class="fa-solid fa-trash"></i>
+</button>
+</div>
+`;
+
+const buttons=item.querySelectorAll("button");
+
+buttons[0].addEventListener(
+"click",
+()=>editSchedule(time)
+);
+
+buttons[1].addEventListener(
+"click",
+()=>deleteSchedule(time)
+);
+
+list.appendChild(item);
+});
+
+$("scheduleCount").textContent=schedules.length;
+}
+
+function renderHistory(){
+const list=$("historyList");
+list.innerHTML="";
+
+$("historyEmpty").style.display=
+history.length?"none":"block";
+
+history.forEach(entry=>{
+const item=document.createElement("div");
+
+item.className=
+`history-item ${entry.type==="Automatic"?"auto":""}`;
+
+item.innerHTML=`
+<span class="history-name">${entry.type} Feed</span>
+<span class="history-date">${formatDate(new Date(entry.time))}</span>
+`;
+
+list.appendChild(item);
+});
+
+$("lastFeed").textContent=
+history.length
+?formatDate(new Date(history[0].time))
+:"None";
+
+updateStatistics();
+}
+
+function updateStatistics(){
+const now=new Date();
+
+const startToday=new Date(
+now.getFullYear(),
+now.getMonth(),
+now.getDate()
+);
+
+const startWeek=new Date(startToday);
+
+startWeek.setDate(
+startWeek.getDate()-startWeek.getDay()
+);
+
+$("manualCount").textContent=
+history.filter(item=>item.type==="Manual").length;
+
+$("autoCount").textContent=
+history.filter(item=>item.type==="Automatic").length;
+
+$("todayCount").textContent=
+history.filter(
+item=>new Date(item.time)>=startToday
+).length;
+
+$("weekCount").textContent=
+history.filter(
+item=>new Date(item.time)>=startWeek
+).length;
+}
+
+function loadHistory(){
+database.ref("history").on("value",snapshot=>{
+history=[];
+
+snapshot.forEach(child=>{
+const data=child.val();
+
+if(data&&data.name&&data.time){
+history.unshift({
+type:data.name,
+time:data.time
+});
+}
+});
+
+renderHistory();
+});
+}
+
+function addHistory(message){
+return database.ref("history").push({
+name:message,
+time:new Date().toISOString()
+});
+}
+
+async function requestFeed(type="Manual"){
+const button=$("feedButton");
+
+if(!wemosOnline){
+showToast("Device not connected","error");
+
+$("motorStatus").textContent="Motor Not Connected";
+$("motorStatus").style.color="#ff6174";
+
+return;
+}
+
+button.disabled=true;
+button.classList.add("feeding");
+
+$("motorStatus").textContent="Starting...";
+$("motorStatus").style.color="#ffc44b";
+
+try{
+await database.ref("feeder/motorCommand").set("ON");
+
+showToast(
+type==="Manual"
+?"Feed command sent"
+:"Automatic feed command sent"
+);
+
+addHistory(type).catch(error=>{
+console.error("History error:",error);
+});
+
+}catch(error){
+console.error("Feed error:",error);
+
+$("motorStatus").textContent="Command Failed";
+$("motorStatus").style.color="#ff6174";
+
+showToast("Command failed","error");
+
+}finally{
+button.disabled=false;
+button.classList.remove("feeding");
+}
+}
+
+async function addSchedule(event){
+event.preventDefault();
+
+const time=$("scheduleTime").value;
+
+if(!time)return;
+
+if(
+schedules.includes(time)&&
+editingSchedule!==time
+){
+showToast(
+"This feeding time already exists.",
+"error"
+);
+return;
+}
+
+if(editingSchedule){
+schedules=schedules.filter(
+item=>item!==editingSchedule
+);
+editingSchedule=null;
+}
+
+if(schedules.includes(time)){
+showToast(
+"This feeding time already exists.",
+"error"
+);
+return;
+}
+
+schedules.push(time);
+schedules.sort();
+
+try{
+await saveSchedules();
+
+renderSchedules();
+
+$("scheduleTime").value="";
+
+showToast("Feeding schedule saved");
+
+}catch(error){
+console.error("Schedule error:",error);
+
+showToast(
+"Failed to save schedule",
+"error"
+);
+}
+}
+
+function editSchedule(time){
+editingSchedule=time;
+$("scheduleTime").value=time;
+$("scheduleTime").focus();
+
+showToast(
+"Update the time and save schedule"
+);
+}
+
+async function deleteSchedule(time){
+const password=prompt(
+"Enter password to delete schedule:"
+);
+
+if(password===null)return;
+
+if(password!==DELETE_PASSWORD){
+showToast("Wrong password!","error");
+return;
+}
+
+schedules=schedules.filter(
+item=>item!==time
+);
+
+if(editingSchedule===time){
+editingSchedule=null;
+}
+
+try{
+await saveSchedules();
+
+renderSchedules();
+
+showToast("Schedule deleted");
+
+}catch(error){
+console.error(
+"Delete schedule error:",
+error
+);
+
+showToast(
+"Failed to delete schedule",
+"error"
+);
+}
+}
+
+async function deleteHistory(){
+const password=prompt(
+"Enter password to delete history:"
+);
+
+if(password===null)return;
+
+if(password!==DELETE_PASSWORD){
+showToast("Wrong password!","error");
+return;
+}
+
+try{
+await database.ref("history").remove();
+
+history=[];
+
+renderHistory();
+showToast("History deleted");
+
+}catch(error){
+console.error(
+"Delete history error:",
+error
+);
+
+showToast(
+"Failed to delete history",
+"error"
+);
+}
+}
+function applySettings(){
+$("durationRange").value=settings.duration;
+$("speedRange").value=settings.speed;
+$("darkModeToggle").checked=settings.darkMode;
+$("reverseMotorToggle").checked=settings.reverseMotor;
+document.body.classList.toggle("light-mode",!settings.darkMode);
+updateSettingLabels();
+}
+
+function updateSettingLabels(){
+    $("durationValue").textContent=
+        `${$("durationRange").value} sec`;
+
+    $("speedValue").textContent=
+        `${$("speedRange").value}%`;
+}
+
+async function saveSettings(){
+settings={
+duration:Number($("durationRange").value),
+speed:Number($("speedRange").value),
+darkMode:$("darkModeToggle").checked,
+reverseMotor:$("reverseMotorToggle").checked
+};
+localStorage.setItem(storageKeys.settings,JSON.stringify(settings));
+try{
+await database.ref("settings").set(settings);
+document.body.classList.toggle("light-mode",!settings.darkMode);
+showToast("Settings saved successfully");
+}catch(error){
+console.error("Settings error:",error);
+showToast("Failed to save settings","error");
+}
+}
+
+$("feedButton").addEventListener("click",event=>{
+const ripple=document.createElement("span");
+
+ripple.className="ripple";
+
+const rect=event.currentTarget.getBoundingClientRect();
+
+ripple.style.width=
+ripple.style.height=
+Math.max(rect.width,rect.height)+"px";
+
+ripple.style.left=
+event.clientX-rect.left-rect.width/2+"px";
+
+ripple.style.top=
+event.clientY-rect.top-rect.width/2+"px";
+
+event.currentTarget.appendChild(ripple);
+
+setTimeout(
+()=>ripple.remove(),
+700
+);
+
+requestFeed();
+});
+
+$("scheduleForm").addEventListener(
+"submit",
+addSchedule
+);
+
+$("durationRange").addEventListener(
+"input",
+updateSettingLabels
+);
+
+$("speedRange").addEventListener(
+"input",
+updateSettingLabels
+);
+
+$("saveSettings").addEventListener(
+"click",
+saveSettings
+);
+
+$("deleteHistoryBtn").addEventListener(
+"click",
+deleteHistory
+);
+
+$("loadBtn").addEventListener(
+"click",
+async()=>{
+if(!wemosOnline){
+showToast(
+"Motor Not Connected",
+"error"
+);
+return;
+}
+
+$("motorStatus").textContent="Starting...";
+$("motorStatus").style.color="#ffc44b";
+
+try{
+await database.ref("feeder/motorCommand").set("LOAD");
+
+showToast("🌾 Load Food command sent");
+
+}catch(error){
+console.error("Load error:",error);
+
+$("motorStatus").textContent="Command Failed";
+$("motorStatus").style.color="#ff6174";
+
+showToast(
+"Failed to send command",
+"error"
+);
+}
+});
+
+$("stopBtn").addEventListener(
+"click",
+async()=>{
+if(!wemosOnline){
+showToast(
+"Motor Not Connected",
+"error"
+);
+
+$("motorStatus").textContent=
+"Motor Not Connected";
+
+$("motorStatus").style.color="#ff6174";
+
+return;
+}
+
+try{
+await database.ref("feeder/motorCommand").set("OFF");
+
+$("motorStatus").textContent="Stopping...";
+$("motorStatus").style.color="#ffc44b";
+
+showToast("Stop command sent");
+
+}catch(error){
+console.error("Stop error:",error);
+
+showToast(
+"Failed to send command",
+"error"
+);
+}
+});
+
+$("darkModeToggle").addEventListener(
+"change",
+()=>{
+document.body.classList.toggle(
+"light-mode",
+!$("darkModeToggle").checked
+);
+});
+
+applySettings();
+
+database.ref("settings").on(
+"value",
+snapshot=>{
+if(snapshot.exists()){
+const data=snapshot.val();
+
+settings={
+duration:Number(data.duration??2),
+speed:Number(data.speed??50),
+darkMode:data.darkMode!==false,
+reverseMotor:data.reverseMotor===true
+};
+
+localStorage.setItem(
+storageKeys.settings,
+JSON.stringify(settings)
+);
+
+applySettings();
+}
+}
+);
+
+loadSchedules();
+loadHistory();
+
+updateClock();
+
+setInterval(
+updateClock,
+1000
+);
+
+$("logoutBtn").addEventListener(
+"click",
+()=>{
+    if(confirm("Are you sure you want to logout?")){
+
+        localStorage.setItem(
+            "fishFeederLogoutTime",
+            Date.now().toString()
+        );
+
+        auth.signOut()
+        .then(()=>{
+            window.location.replace("login.html");
+        })
+        .catch(error=>{
+            console.error("Logout error:",error);
+        });
+    }
+}
+);
+database.ref("device/lastSeen").on(
+"value",
+snapshot=>{
+const timestamp=snapshot.val();
+
+if(timestamp){
+lastSeenTime=Number(timestamp);
+}
+
+checkWemosConnection();
+}
+);
+
+function checkWemosConnection(){
+const now=Date.now();
+
+if(
+lastSeenTime>0&&
+now-lastSeenTime<=30000
+){
+wemosOnline=true;
+
+$("connectionText").textContent=
+"Device Connected";
+
+$("connectionDot").style.background=
+"#35d07f";
+
+$("connectionDot").style.boxShadow=
+"0 0 12px #35d07f";
+
+}else{
+wemosOnline=false;
+
+$("connectionText").textContent=
+"Device Not Connected";
+
+$("connectionDot").style.background=
+"#ff6174";
+
+$("connectionDot").style.boxShadow=
+"0 0 12px #ff6174";
+}
+
+updateMotorStatus();
+}
+
+setInterval(
+checkWemosConnection,
+3000
+);
+
+database.ref("device").on(
+"value",
+snapshot=>{
+const data=snapshot.val();
+
+if(!wemosOnline||!data){
+$("wifiStatus").textContent="No WiFi";
+$("wifiStatus").style.color="#ff6174";
+return;
+}
+
+if(data.wifiStatus!=="Connected"){
+$("wifiStatus").textContent="Disconnected";
+$("wifiStatus").style.color="#ff6174";
+return;
+}
+
+const rssi=Number(data.wifiSignal??-100);
+
+let quality="";
+
+if(rssi>=-50){
+quality="Excellent";
+}else if(rssi>=-60){
+quality="Good";
+}else if(rssi>=-70){
+quality="Fair";
+}else{
+quality="Weak";
+}
+
+$("wifiStatus").textContent=
+`${quality} (${rssi} dBm)`;
+
+$("wifiStatus").style.color="#35d07f";
+}
+);
+
+database.ref("feeder/motor").on(
+"value",
+snapshot=>{
+currentMotorStatus=
+snapshot.val()||"OFF";
+
+updateMotorStatus();
+}
+);
+
+function updateMotorStatus(){
+if(!wemosOnline){
+$("motorStatus").textContent=
+"Motor Not Connected";
+
+$("motorStatus").style.color="#ff6174";
+return;
+}
+
+if(currentMotorStatus==="RUNNING"){
+$("motorStatus").textContent="Running";
+$("motorStatus").style.color="#35d07f";
+return;
+}
+
+if(currentMotorStatus==="OFF"){
+$("motorStatus").textContent="Stopped";
+$("motorStatus").style.color="#ff6174";
+return;
+}
+
+$("motorStatus").textContent=
+"Motor Not Connected";
+
+$("motorStatus").style.color="#ff6174";
+}
+</script>
+</body></html>

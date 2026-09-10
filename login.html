@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Fish Feeder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Poppins, sans-serif;
+    }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background:
+        radial-gradient(circle at top left, #0c5654, transparent 35%),
+        radial-gradient(circle at bottom right, #143c78, transparent 35%),
+        linear-gradient(130deg, #061017, #09232a);
+      overflow: hidden;
+    }
+    body::before,
+    body::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(5px);
+      animation: move 10s infinite alternate;
+    }
+    body::before {
+      width: 250px;
+      height: 250px;
+      background: #35d07f;
+      opacity: .25;
+      top: -80px;
+      left: -80px;
+    }
+    body::after {
+      width: 300px;
+      height: 300px;
+      background: #4ca7ff;
+      opacity: .25;
+      bottom: -100px;
+      right: -100px;
+    }
+    @keyframes move {
+      from {
+        transform: translate(0, 0);
+      }
+      to {
+        transform: translate(40px, 30px);
+      }
+    }
+    .login-box {
+      width: 380px;
+      padding: 35px;
+      background: rgba(15, 32, 42, .75);
+      border: 1px solid rgba(255, 255, 255, .15);
+      backdrop-filter: blur(20px);
+      border-radius: 25px;
+      box-shadow:
+        0 25px 60px rgba(0, 0, 0, .45);
+      color: white;
+      text-align: center;
+      animation: show .7s ease;
+    }
+    @keyframes show {
+      from {
+        opacity: 0;
+        transform: translateY(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 50%;
+      background:
+        linear-gradient(135deg, #35d07f, #2586dd);
+      font-size: 35px;
+      box-shadow:
+        0 0 30px rgba(53, 208, 127, .5);
+    }
+    h1 {
+      margin: 20px 0 5px;
+      font-size: 26px;
+    }
+    .subtitle {
+      color: #98b6c0;
+      font-size: 14px;
+      margin-bottom: 25px;
+    }
+    .input-box {
+      position: relative;
+      margin: 15px 0;
+    }
+   .input-box i:first-child{
+    position:absolute;
+    left:15px;
+    top:14px;
+    color:#98b6c0;
+}
+    input {
+      width: 100%;
+      padding: 14px 15px 14px 45px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, .15);
+      background: rgba(255, 255, 255, .08);
+      color: white;
+      outline: none;
+      font-size: 14px;
+    }
+    input:focus {
+      border-color: #4ca7ff;
+      box-shadow:
+        0 0 10px rgba(76, 167, 255, .4);
+    }
+    input::placeholder {
+      color: #98b6c0;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+      color: #062214;
+      background:
+        linear-gradient(135deg, #35d07f, #15995e);
+      box-shadow:
+        0 12px 25px rgba(53, 208, 127, .3);
+      transition: .3s;
+    }
+    button:hover {
+      transform: translateY(-3px);
+      filter: brightness(1.1);
+    }
+    #error {
+      margin-top: 15px;
+      color: #ff6174;
+      font-size: 14px;
+    }
+    .footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #98b6c0;
+    }
+  </style>
+  <link rel="icon" type="image/png" href="logo.png">
+</head>
+<body>
+  <div class="login-box">
+    <div class="logo">
+      <i class="fa-solid fa-fish"></i>
+    </div>
+    <h1>
+      Smart Fish Feeder
+    </h1>
+    <p class="subtitle">
+      IoT Dashboard Login
+    </p>
+    <div class="input-box">
+      <i class="fa-solid fa-user"></i>
+      <input type="email" id="username" placeholder="Email">
+    </div>
+<div class="input-box" style="position:relative;">
+  <i class="fa-solid fa-lock"></i>
+  <input id="password" type="password" placeholder="Password">
+<i id="togglePassword"
+   class="fa-solid fa-eye"
+   style="position:absolute;right:15px;top:50%;transform:translateY(-50%);cursor:pointer;color:#98b6c0;">
+</i>
+</div>
+    <form onsubmit="login();return false;">
+<button id="loginBtn" type="submit">
+<i class="fa-solid fa-right-to-bracket"></i>
+&nbsp;
+Login
+</button>
+</form>
+  <p id="error"></p>
+    <div class="footer">
+       Smart Automated Feeding System
+    </div>
+  </div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAhBi4WrhwAurgFqD-m6N0NZ-wPjIwUhsI",
+  authDomain: "smartfeeder-v01.firebaseapp.com",
+  databaseURL: "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "smartfeeder-v01",
+  storageBucket: "smartfeeder-v01.firebasestorage.app",
+  messagingSenderId: "371940890381",
+  appId: "1:371940890381:web:ce1d2e6e64fc0d6bc5c244"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const auth = firebase.auth();
+const SESSION_TIME = 30 * 60 * 1000;
+const loginBtn = document.getElementById("loginBtn");
+const errorBox = document.getElementById("error");
+const emailInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+let loginInProgress = false;
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+.then(() => {
+    auth.onAuthStateChanged(user => {
+        if (!user || loginInProgress) {
+            return;
+        }
+        const loginTime = Number(
+            localStorage.getItem("fishFeederLoginTime")
+        );
+        if (!loginTime) {
+            auth.signOut();
+            return;
+        }
+        const elapsed = Date.now() - loginTime;
+        if (elapsed < SESSION_TIME) {
+            window.location.replace("dashboard.html");
+        } else {
+            localStorage.removeItem("fishFeederLoginTime");
+            auth.signOut();
+        }
+    });
+})
+.catch(error => {
+    console.error("Auth persistence error:", error);
+});
+function login() {
+    const email =
+        emailInput.value.trim();
+    const password =
+        passwordInput.value;
+    errorBox.textContent = "";
+    if (!email || !password) {
+        errorBox.textContent =
+            "Please enter your email and password.";
+        return;
+    }
+
+    if (loginInProgress) {
+        return;
+    }
+
+    loginInProgress = true;
+    loginBtn.disabled = true;
+    loginBtn.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> Logging in...';
+
+    auth.signInWithEmailAndPassword(
+        email,
+        password
+    )
+    .then((result) => {
+        console.log(
+            "Login successful:",
+            result.user.email
+        );
+            localStorage.setItem(
+            "fishFeederLoginTime",
+            Date.now().toString()
+        );
+        loginBtn.innerHTML =
+            '<i class="fa-solid fa-circle-check"></i> Success';
+
+        window.location.replace(
+            "dashboard.html"
+        );
+    })
+    .catch((error) => {
+        console.error(
+            "Login error:",
+            error
+        );
+
+        loginInProgress = false;
+        loginBtn.disabled = false;
+        loginBtn.innerHTML =
+            '<i class="fa-solid fa-right-to-bracket"></i> Login';
+        if (
+            error.code ===
+            "auth/invalid-credential"
+        ) {
+            errorBox.textContent =
+                "Invalid email or password.";
+        }
+        else if (
+            error.code ===
+            "auth/invalid-email"
+        ) {
+            errorBox.textContent =
+                "Please enter a valid email address.";
+        }
+        else if (
+            error.code ===
+            "auth/too-many-requests"
+        ) {
+            errorBox.textContent =
+                "Too many attempts. Please try again later.";
+        }
+        else {
+            errorBox.textContent =
+                error.message ||
+                "Login failed. Please try again.";
+        }
+    });
+}
+
+const togglePassword =
+    document.getElementById(
+        "togglePassword"
+    );
+
+togglePassword.addEventListener(
+    "click",
+    () => {
+        if (
+            passwordInput.type ===
+            "password"
+        ) {
+            passwordInput.type =
+                "text";
+            togglePassword.classList.remove(
+                "fa-eye"
+            );
+            togglePassword.classList.add(
+                "fa-eye-slash"
+            );
+        }
+        else {
+            passwordInput.type =
+                "password";
+            togglePassword.classList.remove(
+                "fa-eye-slash"
+            );
+            togglePassword.classList.add(
+                "fa-eye"
+            );
+        }
+    }
+);
+
+</script>
+</body>
+</html>
