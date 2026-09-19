@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check Firebase
+      - name: Test Firebase Connection
         env:
           FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
           FIREBASE_PASSWORD: ${{ secrets.FIREBASE_PASSWORD }}
@@ -21,12 +21,41 @@ jobs:
           import urllib.request
           import urllib.parse
 
-          PROJECT_ID = "smartfeeder-v01"
+          API_KEY = "AIzaSyAhBi4WrhwAurgFqD-m6N0NZ-wPjIwUhsI"
           DATABASE_URL = "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
 
           email = os.environ["FIREBASE_EMAIL"]
           password = os.environ["FIREBASE_PASSWORD"]
 
-          print("Firebase credentials loaded.")
-          print("Feed failure checker started.")
+          login_url = (
+              "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
+              "?key=" + API_KEY
+          )
+
+          login_data = json.dumps({
+              "email": email,
+              "password": password,
+              "returnSecureToken": True
+          }).encode()
+
+          request = urllib.request.Request(
+              login_url,
+              data=login_data,
+              headers={"Content-Type": "application/json"}
+          )
+
+          with urllib.request.urlopen(request) as response:
+              login_result = json.loads(response.read())
+
+          id_token = login_result["idToken"]
+
+          print("Firebase Authentication: SUCCESS")
+
+          db_url = DATABASE_URL + "/device/lastSeen.json?auth=" + urllib.parse.quote(id_token)
+
+          with urllib.request.urlopen(db_url) as response:
+              data = response.read().decode()
+
+          print("Firebase Database access: SUCCESS")
+          print("lastSeen:", data)
           PY
