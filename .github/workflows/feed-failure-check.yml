@@ -12,201 +12,210 @@ jobs:
     steps:
       - name: Check scheduled feeds
         env:
-          FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
-          FIREBASE_PASSWORD: ${{ secrets.FIREBASE_PASSWORD }}
+          FIREBASE_DB_URL: "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
         run: |
           python3 <<'PY'
-          import os
-          import json
           import urllib.request
           import urllib.parse
+          import json
           from datetime import datetime, timezone, timedelta
 
-          API_KEY = "AIzaSyAhBi4WrhwAurgFqD-m6N0NZ-wPjIwUhsI"
-          DATABASE_URL = "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
+          DB_URL = "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
 
-          EMAIL = os.environ["FIREBASE_EMAIL"]
-          PASSWORD = os.environ["FIREBASE_PASSWORD"]
+          def firebase_get(path):
+              url = DB_URL + path + ".json"
+              req = urllib.request.Request(url)
+              with urllib.request.urlopen(req, timeout=15) as response:
+                  return json.loads(response.read().decode())
 
-          def firebase_login():
-              url = (
-                  "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
-                  "?key=" + API_KEY
-              )
-
-              data = json.dumps({
-                  "email": EMAIL,
-                  "password": PASSWORD,
-                  "returnSecureToken": True
-              }).encode()
-
-              request = urllib.request.Request(
-                  url,
-                  data=data,
-                  headers={"Content-Type": "application/json"}
-              )
-
-              with urllib.request.urlopen(request) as response:
-                  result = json.loads(response.read())
-
-              return result["idToken"]
-
-          def firebase_get(path, token):
-              url = (
-                  DATABASE_URL
-                  + path
-                  + ".json?auth="
-                  + urllib.parse.quote(token)
-              )
-
-              with urllib.request.urlopen(url) as response:
-                  return json.loads(response.read())
-
-          def firebase_put(path, data, token):
-              url = (
-                  DATABASE_URL
-                  + path
-                  + ".json?auth="
-                  + urllib.parse.quote(token)
-              )
-
+          def firebase_put(path, data):
+              url = DB_URL + path + ".json"
               body = json.dumps(data).encode()
-
-              request = urllib.request.Request(
+              req = urllib.request.Request(
                   url,
                   data=body,
                   method="PUT",
                   headers={"Content-Type": "application/json"}
               )
+              with urllib.request.urlopen(req, timeout=15) as response:
+                  return response.read().decode()
 
-              with urllib.request.urlopen(request) as response:
-                  return json.loads(response.read())
-
-          def firebase_push(path, data, token):
-              url = (
-                  DATABASE_URL
-                  + path
-                  + ".json?auth="
-                  + urllib.parse.quote(token)
-              )
-
+          def firebase_post(path, data):
+              url = DB_URL + path + ".json"
               body = json.dumps(data).encode()
-
-              request = urllib.request.Request(
+              req = urllib.request.Request(
                   url,
                   data=body,
                   method="POST",
                   headers={"Content-Type": "application/json"}
               )
+              with urllib.request.urlopen(req, timeout=15) as response:
+                  return response.read().decode()
 
-              with urllib.request.urlopen(request) as response:
-                  return json.loads(response.read())
+          # --------------------------------------------------
+          # GET DATA
+          # --------------------------------------------------
 
-          token = firebase_login()
+          schedules = firebase_get("/schedules")
+          last_seen = firebase_get("/device/lastSeen")
 
           print("Firebase Authentication: SUCCESS")
-
-          schedules = firebase_get("/schedules", token)
-          last_seen = firebase_get("/device/lastSeen", token)
-
           print("Schedules:", schedules)
           print("Last Wemos heartbeat:", last_seen)
 
-          now = datetime.now(timezone.utc)
+          # --------------------------------------------------
+          # CURRENT IST TIME
+          # --------------------------------------------------
 
-          # India Standard Time
-          ist = timezone(timedelta(hours=5, minutes=30))
-          current_time = now.astimezone(ist)
+          IST = timezone(timedelta(hours=5, minutes=30))
+          now = datetime.now(IST)
 
-          current_date = current_time.strftime("%Y-%m-%d")
-          current_hm = current_time.strftime("%H:%M")
+          print("Current IST:", now.strftime("%Y-%m-%d %H:%M"))
 
-          print("Current IST:", current_date, current_hm)
+          # --------------------------------------------------
+          # WEMOS ONLINE CHECK
+          # --------------------------------------------------
 
-          if not isinstance(schedules, dict):
+          wemos_online = False
+
+          if last_seen:
+              last_seen_dt = datetime.fromtimestamp(
+                  float(last_seen) / 1000,
+                  tz=IST
+              )
+
+              seconds_since_heartbeat = (
+                  now - last_seen_dt
+              ).total_seconds()
+
+              print(
+                  "Seconds since heartbeat:",
+                  int(seconds_since_heartbeat)
+              )
+
+              # Wemos heartbeat is every 5 seconds.
+              # 15 minutes = 900 seconds.
+              if 0 <= seconds_since_heartbeat <= 900:
+                  wemos_online = True
+
+          print("Wemos online:", wemos_online)
+
+          # --------------------------------------------------
+          # CHECK RECENT SCHEDULES
+          # --------------------------------------------------
+
+          if not schedules:
               print("No schedules found.")
-              exit(0)
+              print("Feed failure check completed.")
+              raise SystemExit(0)
 
-          if not last_seen:
-              last_seen_ms = 0
-          else:
-              last_seen_ms = float(last_seen)
+          current_total_minutes = now.hour * 60 + now.minute
 
-          now_ms = now.timestamp() * 1000
+          # Check the current minute and previous 5 minutes.
+          # This handles GitHub Actions running late.
+          minutes_to_check = set()
 
-          # Wemos is considered online if heartbeat was received
-          # within the last 30 seconds.
-          online = (now_ms - last_seen_ms) <= 30000
+          for offset in range(0, 6):
+              check_total = current_total_minutes - offset
+              check_total %= 1440
 
-          print("Wemos online:", online)
+              hour = check_total // 60
+              minute = check_total % 60
 
-          for schedule_key, schedule_time in schedules.items():
+              minutes_to_check.add(
+                  f"{hour:02d}:{minute:02d}"
+              )
+
+          print("Checking schedule window:", sorted(minutes_to_check))
+
+          # --------------------------------------------------
+          # PREVENT DUPLICATE FAILURE HISTORY
+          # --------------------------------------------------
+
+          checked = firebase_get("/feedFailureChecks")
+
+          if not isinstance(checked, dict):
+              checked = {}
+
+          # --------------------------------------------------
+          # PROCESS SCHEDULES
+          # --------------------------------------------------
+
+          for key, schedule_time in schedules.items():
 
               if not isinstance(schedule_time, str):
                   continue
 
-              if len(schedule_time) != 5:
+              schedule_time = schedule_time.strip()
+
+              if schedule_time not in minutes_to_check:
                   continue
 
-              if schedule_time != current_hm:
-                  continue
+              # Unique ID for this scheduled occurrence.
+              occurrence_id = (
+                  now.strftime("%Y-%m-%d") + "_" + schedule_time
+              )
 
-              check_id = current_date + "_" + schedule_key
-
-              check_path = "/feedFailureChecks/" + check_id
-
-              already_checked = firebase_get(check_path, token)
-
-              if already_checked is not None:
-                  print("Already processed:", check_id)
-                  continue
-
-              if online:
+              if checked.get(occurrence_id) is True:
                   print(
-                      "Scheduled time reached and Wemos is online:",
+                      "Already checked:",
                       schedule_time
                   )
+                  continue
 
-                  firebase_put(
-                      check_path,
-                      {
-                          "status": "success",
-                          "schedule": schedule_time,
-                          "date": current_date
-                      },
-                      token
+              print(
+                  "Checking scheduled feed:",
+                  schedule_time
+              )
+
+              # ------------------------------------------------
+              # WEMOS ONLINE
+              # ------------------------------------------------
+
+              if wemos_online:
+
+                  print(
+                      "Wemos is online. "
+                      "No Feed Failed message."
                   )
 
-                  print("Feed marked as successful.")
+                  checked[occurrence_id] = True
+
+                  firebase_put(
+                      "/feedFailureChecks/" + occurrence_id,
+                      True
+                  )
+
+              # ------------------------------------------------
+              # WEMOS OFFLINE
+              # ------------------------------------------------
 
               else:
+
                   print(
-                      "Scheduled time reached but Wemos is offline:",
-                      schedule_time
+                      "Wemos is offline."
                   )
 
-                  history = {
+                  failure = {
                       "name": "Feed Failed",
-                      "time": now_ms
+                      "time": int(now.timestamp() * 1000),
+                      "schedule": schedule_time
                   }
 
-                  firebase_push(
+                  firebase_post(
                       "/history",
-                      history,
-                      token
+                      failure
                   )
 
                   firebase_put(
-                      check_path,
-                      {
-                          "status": "failed",
-                          "schedule": schedule_time,
-                          "date": current_date
-                      },
-                      token
+                      "/feedFailureChecks/" + occurrence_id,
+                      True
                   )
 
-                  print("Feed Failed added to history.")
+                  print(
+                      "Feed Failed added to history:",
+                      schedule_time
+                  )
 
           print("Feed failure check completed.")
           PY
