@@ -11,5 +11,22 @@ jobs:
 
     steps:
       - name: Check Firebase
+        env:
+          FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
+          FIREBASE_PASSWORD: ${{ secrets.FIREBASE_PASSWORD }}
         run: |
-          echo "Feed failure checker started"
+          python3 <<'PY'
+          import os
+          import json
+          import urllib.request
+          import urllib.parse
+
+          PROJECT_ID = "smartfeeder-v01"
+          DATABASE_URL = "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
+
+          email = os.environ["FIREBASE_EMAIL"]
+          password = os.environ["FIREBASE_PASSWORD"]
+
+          print("Firebase credentials loaded.")
+          print("Feed failure checker started.")
+          PY
