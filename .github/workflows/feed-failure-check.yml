@@ -29,7 +29,6 @@ jobs:
           FIREBASE_PASSWORD = os.environ["FIREBASE_PASSWORD"]
           FIREBASE_API_KEY = os.environ["FIREBASE_API_KEY"]
 
-
           # --------------------------------------------------
           # FIREBASE LOGIN
           # --------------------------------------------------
@@ -68,11 +67,9 @@ jobs:
 
               return result["idToken"]
 
-
           FIREBASE_ID_TOKEN = firebase_login()
 
           print("Firebase Authentication: SUCCESS")
-
 
           # --------------------------------------------------
           # FIREBASE GET
@@ -97,7 +94,6 @@ jobs:
                   return json.loads(
                       response.read().decode()
                   )
-
 
           # --------------------------------------------------
           # FIREBASE PUT
@@ -130,7 +126,6 @@ jobs:
 
                   return response.read().decode()
 
-
           # --------------------------------------------------
           # FIREBASE POST
           # --------------------------------------------------
@@ -162,7 +157,6 @@ jobs:
 
                   return response.read().decode()
 
-
           # --------------------------------------------------
           # GET DATA
           # --------------------------------------------------
@@ -172,7 +166,6 @@ jobs:
 
           print("Schedules:", schedules)
           print("Last Wemos heartbeat:", last_seen)
-
 
           # --------------------------------------------------
           # CURRENT IST TIME
@@ -188,7 +181,6 @@ jobs:
               "Current IST:",
               now.strftime("%Y-%m-%d %H:%M")
           )
-
 
           # --------------------------------------------------
           # WEMOS ONLINE CHECK
@@ -212,14 +204,15 @@ jobs:
                   int(seconds_since_heartbeat)
               )
 
-              if 0 <= seconds_since_heartbeat <= 900:
+              # Wemos is considered online if heartbeat
+              # was received within the last 60 seconds.
+              if 0 <= seconds_since_heartbeat <= 60:
                   wemos_online = True
 
           print(
               "Wemos online:",
               wemos_online
           )
-
 
           # --------------------------------------------------
           # CHECK RECENT SCHEDULES
@@ -232,14 +225,17 @@ jobs:
 
               raise SystemExit(0)
 
-
           current_total_minutes = (
               now.hour * 60 + now.minute
           )
 
           minutes_to_check = set()
 
-          for offset in range(0, 6):
+          # Check current minute + previous 15 minutes.
+          # This gives GitHub Actions enough tolerance
+          # if the scheduled workflow starts late.
+
+          for offset in range(0, 16):
 
               check_total = (
                   current_total_minutes - offset
@@ -252,12 +248,10 @@ jobs:
                   f"{hour:02d}:{minute:02d}"
               )
 
-
           print(
               "Checking schedule window:",
               sorted(minutes_to_check)
           )
-
 
           # --------------------------------------------------
           # PREVENT DUPLICATE FAILURE HISTORY
@@ -269,7 +263,6 @@ jobs:
 
           if not isinstance(checked, dict):
               checked = {}
-
 
           # --------------------------------------------------
           # PROCESS SCHEDULES
@@ -285,13 +278,16 @@ jobs:
               if schedule_time not in minutes_to_check:
                   continue
 
-
+              # Unique ID for this scheduled occurrence.
               occurrence_id = (
                   now.strftime("%Y-%m-%d")
                   + "_"
                   + schedule_time
               )
 
+              # ------------------------------------------------
+              # PREVENT DUPLICATE PROCESSING
+              # ------------------------------------------------
 
               if checked.get(occurrence_id) is True:
 
@@ -302,12 +298,10 @@ jobs:
 
                   continue
 
-
               print(
                   "Checking scheduled feed:",
                   schedule_time
               )
-
 
               # ------------------------------------------------
               # WEMOS ONLINE
@@ -325,7 +319,6 @@ jobs:
                       + occurrence_id,
                       True
                   )
-
 
               # ------------------------------------------------
               # WEMOS OFFLINE
@@ -360,7 +353,6 @@ jobs:
                       "Feed Failed added to history:",
                       schedule_time
                   )
-
 
           print(
               "Feed failure check completed."
