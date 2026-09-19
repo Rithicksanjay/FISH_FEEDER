@@ -443,7 +443,7 @@ item.className=
 `history-item ${entry.type==="Automatic"?"auto":""}`;
 
 item.innerHTML=`
-<span class="history-name">${entry.type} Feed</span>
+<span class="history-name">${entry.type==="Feed Failed"?"Feed Failed":entry.type+" Feed"}</span>
 <span class="history-date">${formatDate(new Date(entry.time))}</span>
 `;
 
@@ -509,10 +509,10 @@ renderHistory();
 });
 }
 
-function addHistory(message){
+function addHistory(message, time=null){
 return database.ref("history").push({
 name:message,
-time:new Date().toISOString()
+time:time || new Date().toISOString()
 });
 }
 
@@ -535,6 +535,13 @@ $("motorStatus").textContent="Starting...";
 $("motorStatus").style.color="#ffc44b";
 
 try{
+
+if(!wemosOnline){
+    showToast("Device not connected","error");
+    updateMotorStatus();
+    return;
+}
+
 await database.ref("feeder/motorCommand").set("ON");
 
 showToast(
@@ -1038,5 +1045,55 @@ $("motorStatus").textContent=
 
 $("motorStatus").style.color="#ff6174";
 }
+let processedSchedules={};
+
+function checkScheduledFeeds(){
+    const now=new Date();
+
+    const currentTime=
+        String(now.getHours()).padStart(2,"0")+":"+
+        String(now.getMinutes()).padStart(2,"0");
+
+    const today=
+        now.getFullYear()+"-"+ 
+        String(now.getMonth()+1).padStart(2,"0")+"-"+ 
+        String(now.getDate()).padStart(2,"0");
+
+    schedules.forEach(scheduleTime=>{
+
+        if(scheduleTime!==currentTime)return;
+
+        const scheduleKey=today+"_"+scheduleTime;
+
+        if(processedSchedules[scheduleKey])return;
+
+        processedSchedules[scheduleKey]=true;
+
+        if(!wemosOnline){
+
+            const failedTime=new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                Number(scheduleTime.split(":")[0]),
+                Number(scheduleTime.split(":")[1]),
+                0
+            ).toISOString();
+
+            addHistory("Feed Failed",failedTime);
+
+            showToast(
+                `Feed Failed - Scheduled time ${scheduleTime}`,
+                "error"
+            );
+
+        }
+    });
+}
+
+setInterval(
+    checkScheduledFeeds,
+    1000
+);
 </script>
 </body></html>
