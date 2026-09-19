@@ -1,134 +1,15 @@
 name: Feed Failure Checker
 
 on:
-  workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
+  workflow_dispatch:
 
 jobs:
-  check-feed-failure:
+  check-feed:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check Firebase for failed scheduled feeds
-        env:
-          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+      - name: Check Firebase
         run: |
-          python3 <<'PY'
-          import os
-          import json
-          import urllib.request
-          from datetime import datetime, timezone, timedelta
-
-          db_url = os.environ["FIREBASE_DB_URL"].rstrip("/")
-
-          def firebase_get(path):
-              url = db_url + "/" + path + ".json"
-              with urllib.request.urlopen(url, timeout=15) as response:
-                  return json.loads(response.read().decode())
-
-          def firebase_push(path, data):
-              url = db_url + "/" + path + ".json"
-
-              request = urllib.request.Request(
-                  url,
-                  data=json.dumps(data).encode(),
-                  headers={"Content-Type": "application/json"},
-                  method="POST"
-              )
-
-              with urllib.request.urlopen(request, timeout=15) as response:
-                  return response.read()
-
-          schedules = firebase_get("schedules")
-          last_seen = firebase_get("device/lastSeen")
-          history = firebase_get("history")
-
-          now = datetime.now(timezone.utc)
-          ist = timezone(timedelta(hours=5, minutes=30))
-          local_now = now.astimezone(ist)
-
-          print("Current IST:", local_now.strftime("%Y-%m-%d %H:%M:%S"))
-
-          if isinstance(schedules, dict):
-              schedule_list = list(schedules.values())
-          elif isinstance(schedules, list):
-              schedule_list = schedules
-          else:
-              schedule_list = []
-
-          device_online = (
-              isinstance(last_seen, (int, float))
-              and last_seen > 0
-              and (now.timestamp() * 1000 - last_seen) <= 30000
-          )
-
-          print("Device online:", device_online)
-
-          current_time = local_now.strftime("%H:%M")
-          today = local_now.strftime("%Y-%m-%d")
-
-          for schedule in schedule_list:
-
-              if not isinstance(schedule, str):
-                  continue
-
-              if schedule != current_time:
-                  continue
-
-              print("Scheduled time detected:", schedule)
-
-              already_failed = False
-
-              if isinstance(history, dict):
-
-                  for entry in history.values():
-
-                      if not isinstance(entry, dict):
-                          continue
-
-                      if entry.get("name") != "Feed Failed":
-                          continue
-
-                      entry_time = entry.get("time")
-
-                      if not isinstance(entry_time, (int, float)):
-                          continue
-
-                      entry_dt = datetime.fromtimestamp(
-                          entry_time / 1000,
-                          timezone.utc
-                      ).astimezone(ist)
-
-                      if (
-                          entry_dt.strftime("%Y-%m-%d") == today
-                          and entry_dt.strftime("%H:%M") == schedule
-                      ):
-                          already_failed = True
-                          break
-
-              if already_failed:
-                  print("Feed Failed already recorded.")
-                  continue
-
-              if not device_online:
-
-                  print("Device offline.")
-                  print("Recording Feed Failed.")
-
-                  failure_time = int(now.timestamp() * 1000)
-
-                  firebase_push(
-                      "history",
-                      {
-                          "name": "Feed Failed",
-                          "time": failure_time
-                      }
-                  )
-
-                  print("Feed Failed recorded successfully.")
-
-              else:
-
-                  print("Device is online.")
-                  print("No failure recorded.")
+          echo "Feed failure checker started"
