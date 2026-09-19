@@ -13,44 +13,155 @@ jobs:
       - name: Check scheduled feeds
         env:
           FIREBASE_DB_URL: "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
+          FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
+          FIREBASE_PASSWORD: ${{ secrets.FIREBASE_PASSWORD }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+
         run: |
           python3 <<'PY'
+          import os
           import urllib.request
-          import urllib.parse
           import json
           from datetime import datetime, timezone, timedelta
 
-          DB_URL = "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
+          DB_URL = os.environ["FIREBASE_DB_URL"]
+          FIREBASE_EMAIL = os.environ["FIREBASE_EMAIL"]
+          FIREBASE_PASSWORD = os.environ["FIREBASE_PASSWORD"]
+          FIREBASE_API_KEY = os.environ["FIREBASE_API_KEY"]
+
+
+          # --------------------------------------------------
+          # FIREBASE LOGIN
+          # --------------------------------------------------
+
+          def firebase_login():
+
+              url = (
+                  "https://identitytoolkit.googleapis.com/v1/"
+                  "accounts:signInWithPassword?key="
+                  + FIREBASE_API_KEY
+              )
+
+              data = json.dumps({
+                  "email": FIREBASE_EMAIL,
+                  "password": FIREBASE_PASSWORD,
+                  "returnSecureToken": True
+              }).encode()
+
+              req = urllib.request.Request(
+                  url,
+                  data=data,
+                  method="POST",
+                  headers={
+                      "Content-Type": "application/json"
+                  }
+              )
+
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
+                  result = json.loads(
+                      response.read().decode()
+                  )
+
+              return result["idToken"]
+
+
+          FIREBASE_ID_TOKEN = firebase_login()
+
+          print("Firebase Authentication: SUCCESS")
+
+
+          # --------------------------------------------------
+          # FIREBASE GET
+          # --------------------------------------------------
 
           def firebase_get(path):
-              url = DB_URL + path + ".json"
+
+              url = (
+                  DB_URL
+                  + path
+                  + ".json?auth="
+                  + FIREBASE_ID_TOKEN
+              )
+
               req = urllib.request.Request(url)
-              with urllib.request.urlopen(req, timeout=15) as response:
-                  return json.loads(response.read().decode())
+
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
+                  return json.loads(
+                      response.read().decode()
+                  )
+
+
+          # --------------------------------------------------
+          # FIREBASE PUT
+          # --------------------------------------------------
 
           def firebase_put(path, data):
-              url = DB_URL + path + ".json"
+
+              url = (
+                  DB_URL
+                  + path
+                  + ".json?auth="
+                  + FIREBASE_ID_TOKEN
+              )
+
               body = json.dumps(data).encode()
+
               req = urllib.request.Request(
                   url,
                   data=body,
                   method="PUT",
-                  headers={"Content-Type": "application/json"}
+                  headers={
+                      "Content-Type": "application/json"
+                  }
               )
-              with urllib.request.urlopen(req, timeout=15) as response:
+
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
                   return response.read().decode()
 
+
+          # --------------------------------------------------
+          # FIREBASE POST
+          # --------------------------------------------------
+
           def firebase_post(path, data):
-              url = DB_URL + path + ".json"
+
+              url = (
+                  DB_URL
+                  + path
+                  + ".json?auth="
+                  + FIREBASE_ID_TOKEN
+              )
+
               body = json.dumps(data).encode()
+
               req = urllib.request.Request(
                   url,
                   data=body,
                   method="POST",
-                  headers={"Content-Type": "application/json"}
+                  headers={
+                      "Content-Type": "application/json"
+                  }
               )
-              with urllib.request.urlopen(req, timeout=15) as response:
+
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
                   return response.read().decode()
+
 
           # --------------------------------------------------
           # GET DATA
@@ -59,18 +170,25 @@ jobs:
           schedules = firebase_get("/schedules")
           last_seen = firebase_get("/device/lastSeen")
 
-          print("Firebase Authentication: SUCCESS")
           print("Schedules:", schedules)
           print("Last Wemos heartbeat:", last_seen)
+
 
           # --------------------------------------------------
           # CURRENT IST TIME
           # --------------------------------------------------
 
-          IST = timezone(timedelta(hours=5, minutes=30))
+          IST = timezone(
+              timedelta(hours=5, minutes=30)
+          )
+
           now = datetime.now(IST)
 
-          print("Current IST:", now.strftime("%Y-%m-%d %H:%M"))
+          print(
+              "Current IST:",
+              now.strftime("%Y-%m-%d %H:%M")
+          )
+
 
           # --------------------------------------------------
           # WEMOS ONLINE CHECK
@@ -79,6 +197,7 @@ jobs:
           wemos_online = False
 
           if last_seen:
+
               last_seen_dt = datetime.fromtimestamp(
                   float(last_seen) / 1000,
                   tz=IST
@@ -93,31 +212,38 @@ jobs:
                   int(seconds_since_heartbeat)
               )
 
-              # Wemos heartbeat is every 5 seconds.
-              # 15 minutes = 900 seconds.
               if 0 <= seconds_since_heartbeat <= 900:
                   wemos_online = True
 
-          print("Wemos online:", wemos_online)
+          print(
+              "Wemos online:",
+              wemos_online
+          )
+
 
           # --------------------------------------------------
           # CHECK RECENT SCHEDULES
           # --------------------------------------------------
 
           if not schedules:
+
               print("No schedules found.")
               print("Feed failure check completed.")
+
               raise SystemExit(0)
 
-          current_total_minutes = now.hour * 60 + now.minute
 
-          # Check the current minute and previous 5 minutes.
-          # This handles GitHub Actions running late.
+          current_total_minutes = (
+              now.hour * 60 + now.minute
+          )
+
           minutes_to_check = set()
 
           for offset in range(0, 6):
-              check_total = current_total_minutes - offset
-              check_total %= 1440
+
+              check_total = (
+                  current_total_minutes - offset
+              ) % 1440
 
               hour = check_total // 60
               minute = check_total % 60
@@ -126,16 +252,24 @@ jobs:
                   f"{hour:02d}:{minute:02d}"
               )
 
-          print("Checking schedule window:", sorted(minutes_to_check))
+
+          print(
+              "Checking schedule window:",
+              sorted(minutes_to_check)
+          )
+
 
           # --------------------------------------------------
           # PREVENT DUPLICATE FAILURE HISTORY
           # --------------------------------------------------
 
-          checked = firebase_get("/feedFailureChecks")
+          checked = firebase_get(
+              "/feedFailureChecks"
+          )
 
           if not isinstance(checked, dict):
               checked = {}
+
 
           # --------------------------------------------------
           # PROCESS SCHEDULES
@@ -151,22 +285,29 @@ jobs:
               if schedule_time not in minutes_to_check:
                   continue
 
-              # Unique ID for this scheduled occurrence.
+
               occurrence_id = (
-                  now.strftime("%Y-%m-%d") + "_" + schedule_time
+                  now.strftime("%Y-%m-%d")
+                  + "_"
+                  + schedule_time
               )
 
+
               if checked.get(occurrence_id) is True:
+
                   print(
                       "Already checked:",
                       schedule_time
                   )
+
                   continue
+
 
               print(
                   "Checking scheduled feed:",
                   schedule_time
               )
+
 
               # ------------------------------------------------
               # WEMOS ONLINE
@@ -179,12 +320,12 @@ jobs:
                       "No Feed Failed message."
                   )
 
-                  checked[occurrence_id] = True
-
                   firebase_put(
-                      "/feedFailureChecks/" + occurrence_id,
+                      "/feedFailureChecks/"
+                      + occurrence_id,
                       True
                   )
+
 
               # ------------------------------------------------
               # WEMOS OFFLINE
@@ -198,7 +339,9 @@ jobs:
 
                   failure = {
                       "name": "Feed Failed",
-                      "time": int(now.timestamp() * 1000),
+                      "time": int(
+                          now.timestamp() * 1000
+                      ),
                       "schedule": schedule_time
                   }
 
@@ -208,7 +351,8 @@ jobs:
                   )
 
                   firebase_put(
-                      "/feedFailureChecks/" + occurrence_id,
+                      "/feedFailureChecks/"
+                      + occurrence_id,
                       True
                   )
 
@@ -217,5 +361,9 @@ jobs:
                       schedule_time
                   )
 
-          print("Feed failure check completed.")
+
+          print(
+              "Feed failure check completed."
+          )
+
           PY
