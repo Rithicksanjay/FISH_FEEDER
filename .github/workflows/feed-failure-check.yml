@@ -184,7 +184,7 @@ jobs:
               window_start = now - timedelta(minutes=15)
               print("No previous checker run found.")
           else:
-              window_start = last_run - timedelta(minutes=3)
+              window_start = last_run - timedelta(minutes=10)
 
               print(
                   "Previous checker run:",
@@ -411,6 +411,7 @@ jobs:
           )
 
           print("Feed failure check completed.")
+
           print(
               "Last checker time:",
               now.isoformat()
