@@ -2,7 +2,7 @@ name: Feed Failure Checker
 
 on:
   schedule:
-    - cron: "* * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check scheduled feeds
+      - name: Check missed scheduled feeds
         env:
           FIREBASE_DB_URL: "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
           FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
@@ -158,17 +158,7 @@ jobs:
                   return response.read().decode()
 
           # --------------------------------------------------
-          # GET DATA
-          # --------------------------------------------------
-
-          schedules = firebase_get("/schedules")
-          last_seen = firebase_get("/device/lastSeen")
-
-          print("Schedules:", schedules)
-          print("Last Wemos heartbeat:", last_seen)
-
-          # --------------------------------------------------
-          # CURRENT IST TIME
+          # IST TIME
           # --------------------------------------------------
 
           IST = timezone(
@@ -179,8 +169,22 @@ jobs:
 
           print(
               "Current IST:",
-              now.strftime("%Y-%m-%d %H:%M")
+              now.strftime("%Y-%m-%d %H:%M:%S")
           )
+
+          # --------------------------------------------------
+          # GET FIREBASE DATA
+          # --------------------------------------------------
+
+          schedules = firebase_get("/schedules")
+          last_seen = firebase_get("/device/lastSeen")
+          checked = firebase_get("/feedFailureChecks")
+
+          print("Schedules:", schedules)
+          print("Last Wemos heartbeat:", last_seen)
+
+          if not isinstance(checked, dict):
+              checked = {}
 
           # --------------------------------------------------
           # WEMOS ONLINE CHECK
@@ -190,24 +194,34 @@ jobs:
 
           if last_seen:
 
-              last_seen_dt = datetime.fromtimestamp(
-                  float(last_seen) / 1000,
-                  tz=IST
-              )
+              try:
 
-              seconds_since_heartbeat = (
-                  now - last_seen_dt
-              ).total_seconds()
+                  last_seen_dt = datetime.fromtimestamp(
+                      float(last_seen) / 1000,
+                      tz=IST
+                  )
 
-              print(
-                  "Seconds since heartbeat:",
-                  int(seconds_since_heartbeat)
-              )
+                  seconds_since_heartbeat = (
+                      now - last_seen_dt
+                  ).total_seconds()
 
-              # Wemos is considered online if heartbeat
-              # was received within the last 60 seconds.
-              if 0 <= seconds_since_heartbeat <= 60:
-                  wemos_online = True
+                  print(
+                      "Seconds since heartbeat:",
+                      int(seconds_since_heartbeat)
+                  )
+
+                  # Wemos is considered online if a heartbeat
+                  # was received within the last 15 minutes.
+
+                  if 0 <= seconds_since_heartbeat <= 900:
+                      wemos_online = True
+
+              except Exception as error:
+
+                  print(
+                      "Heartbeat parsing error:",
+                      error
+                  )
 
           print(
               "Wemos online:",
@@ -215,7 +229,7 @@ jobs:
           )
 
           # --------------------------------------------------
-          # CHECK RECENT SCHEDULES
+          # NO SCHEDULES
           # --------------------------------------------------
 
           if not schedules:
@@ -225,93 +239,179 @@ jobs:
 
               raise SystemExit(0)
 
-          current_total_minutes = (
-              now.hour * 60 + now.minute
-          )
+          # --------------------------------------------------
+          # NORMALIZE SCHEDULES
+          # --------------------------------------------------
 
-          minutes_to_check = set()
+          schedule_times = []
 
-          # Check current minute + previous 15 minutes.
-          # This gives GitHub Actions enough tolerance
-          # if the scheduled workflow starts late.
+          if isinstance(schedules, list):
 
-          for offset in range(0, 16):
+              for item in schedules:
 
-              check_total = (
-                  current_total_minutes - offset
-              ) % 1440
+                  if isinstance(item, str):
+                      schedule_times.append(
+                          item.strip()
+                      )
 
-              hour = check_total // 60
-              minute = check_total % 60
+          elif isinstance(schedules, dict):
 
-              minutes_to_check.add(
-                  f"{hour:02d}:{minute:02d}"
-              )
+              for value in schedules.values():
+
+                  if isinstance(value, str):
+                      schedule_times.append(
+                          value.strip()
+                      )
 
           print(
-              "Checking schedule window:",
-              sorted(minutes_to_check)
+              "Schedule times:",
+              schedule_times
           )
 
           # --------------------------------------------------
-          # PREVENT DUPLICATE FAILURE HISTORY
+          # CHECK MISSED SCHEDULES
           # --------------------------------------------------
 
-          checked = firebase_get(
-              "/feedFailureChecks"
+          #
+          # GitHub Actions may start late.
+          #
+          # Instead of checking only the current minute,
+          # look back through the previous 24 HOURS.
+          #
+          # This means a delayed GitHub run can still find
+          # a schedule that was missed while the website
+          # was closed.
+          #
+
+          start_of_window = now - timedelta(
+              hours=24
           )
 
-          if not isinstance(checked, dict):
-              checked = {}
-
-          # --------------------------------------------------
-          # PROCESS SCHEDULES
-          # --------------------------------------------------
-
-          for key, schedule_time in schedules.items():
-
-              if not isinstance(schedule_time, str):
-                  continue
-
-              schedule_time = schedule_time.strip()
-
-              if schedule_time not in minutes_to_check:
-                  continue
-
-              # Unique ID for this scheduled occurrence.
-              occurrence_id = (
-                  now.strftime("%Y-%m-%d")
-                  + "_"
-                  + schedule_time
+          print(
+              "Checking missed schedules from:",
+              start_of_window.strftime(
+                  "%Y-%m-%d %H:%M"
+              ),
+              "to:",
+              now.strftime(
+                  "%Y-%m-%d %H:%M"
               )
+          )
 
-              # ------------------------------------------------
-              # PREVENT DUPLICATE PROCESSING
-              # ------------------------------------------------
+          # --------------------------------------------------
+          # PROCESS EACH SCHEDULE
+          # --------------------------------------------------
 
-              if checked.get(occurrence_id) is True:
+          for schedule_time in schedule_times:
+
+              if not schedule_time:
+                  continue
+
+              try:
+
+                  schedule_hour, schedule_minute = map(
+                      int,
+                      schedule_time.split(":")
+                  )
+
+              except Exception:
 
                   print(
-                      "Already checked:",
+                      "Invalid schedule:",
                       schedule_time
                   )
 
                   continue
 
-              print(
-                  "Checking scheduled feed:",
-                  schedule_time
+              # ------------------------------------------------
+              # CHECK TODAY'S OCCURRENCE
+              # ------------------------------------------------
+
+              scheduled_dt = datetime(
+                  now.year,
+                  now.month,
+                  now.day,
+                  schedule_hour,
+                  schedule_minute,
+                  tzinfo=IST
+              )
+
+              # If today's scheduled time is still in the future,
+              # there is nothing to process yet.
+
+              if scheduled_dt > now:
+
+                  print(
+                      "Future schedule:",
+                      schedule_time
+                  )
+
+                  continue
+
+              # If today's occurrence is older than 24 hours,
+              # don't process it.
+
+              if scheduled_dt < start_of_window:
+
+                  continue
+
+              occurrence_id = (
+                  scheduled_dt.strftime("%Y-%m-%d")
+                  + "_"
+                  + schedule_time
               )
 
               # ------------------------------------------------
-              # WEMOS ONLINE
+              # DUPLICATE PROTECTION
+              # ------------------------------------------------
+
+              if checked.get(occurrence_id) is True:
+
+                  print(
+                      "Already processed:",
+                      occurrence_id
+                  )
+
+                  continue
+
+              print()
+              print(
+                  "========================================"
+              )
+
+              print(
+                  "MISSED SCHEDULE FOUND:",
+                  schedule_time
+              )
+
+              print(
+                  "Scheduled time:",
+                  scheduled_dt.strftime(
+                      "%Y-%m-%d %H:%M"
+                  )
+              )
+
+              print(
+                  "========================================"
+              )
+
+              # ------------------------------------------------
+              # IMPORTANT:
+              #
+              # Only mark Feed Failed if the Wemos was OFFLINE.
+              #
+              # If Wemos is online, the Wemos itself is expected
+              # to handle the scheduled feed.
               # ------------------------------------------------
 
               if wemos_online:
 
                   print(
-                      "Wemos is online. "
-                      "No Feed Failed message."
+                      "Wemos is online."
+                  )
+
+                  print(
+                      "No Feed Failed entry created."
                   )
 
                   firebase_put(
@@ -320,20 +420,16 @@ jobs:
                       True
                   )
 
-              # ------------------------------------------------
-              # WEMOS OFFLINE
-              # ------------------------------------------------
-
               else:
 
                   print(
-                      "Wemos is offline."
+                      "Wemos is OFFLINE."
                   )
 
                   failure = {
                       "name": "Feed Failed",
                       "time": int(
-                          now.timestamp() * 1000
+                          scheduled_dt.timestamp() * 1000
                       ),
                       "schedule": schedule_time
                   }
@@ -350,12 +446,21 @@ jobs:
                   )
 
                   print(
-                      "Feed Failed added to history:",
+                      "Feed Failed added to Firebase history:",
                       schedule_time
                   )
 
+          print()
+          print(
+              "========================================"
+          )
+
           print(
               "Feed failure check completed."
+          )
+
+          print(
+              "========================================"
           )
 
           PY
