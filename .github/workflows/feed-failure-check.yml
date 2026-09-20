@@ -20,7 +20,7 @@ jobs:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
 
         run: |
-          python3 <<'PY'
+          python3 - <<'PY'
           import os
           import urllib.request
           import json
@@ -56,9 +56,7 @@ jobs:
               )
 
               with urllib.request.urlopen(req, timeout=15) as response:
-                  result = json.loads(
-                      response.read().decode()
-                  )
+                  result = json.loads(response.read().decode())
 
               return result["idToken"]
 
@@ -77,9 +75,7 @@ jobs:
               req = urllib.request.Request(url)
 
               with urllib.request.urlopen(req, timeout=15) as response:
-                  return json.loads(
-                      response.read().decode()
-                  )
+                  return json.loads(response.read().decode())
 
           def firebase_put(path, data):
               url = (
@@ -148,11 +144,9 @@ jobs:
                       dt = datetime.fromisoformat(text)
 
                       if dt.tzinfo is None:
-                          dt = dt.replace(tzinfo=IST)
-                      else:
-                          dt = dt.astimezone(IST)
+                          return dt.replace(tzinfo=IST)
 
-                      return dt
+                      return dt.astimezone(IST)
 
               except Exception:
                   return None
@@ -173,11 +167,14 @@ jobs:
               "/feedFailureChecker/lastRunAt"
           )
 
-          if not isinstance(checked, dict):
-              checked = {}
+          if not isinstance(schedules, (dict, list)):
+              schedules = {}
 
           if not isinstance(history, dict):
               history = {}
+
+          if not isinstance(checked, dict):
+              checked = {}
 
           print("Schedules:", schedules)
           print("History entries:", len(history))
@@ -197,16 +194,6 @@ jobs:
 
           process_until = now - timedelta(minutes=1)
 
-          if process_until <= window_start:
-              print("Nothing ready to process.")
-
-              firebase_put(
-                  "/feedFailureChecker/lastRunAt",
-                  now.isoformat()
-              )
-
-              raise SystemExit(0)
-
           print(
               "Processing from:",
               window_start.strftime("%Y-%m-%d %H:%M:%S")
@@ -217,36 +204,45 @@ jobs:
               process_until.strftime("%Y-%m-%d %H:%M:%S")
           )
 
+          if process_until <= window_start:
+              print("Nothing ready to process.")
+
+              firebase_put(
+                  "/feedFailureChecker/lastRunAt",
+                  now.isoformat()
+              )
+
+              raise SystemExit(0)
+
           schedule_times = []
 
           if isinstance(schedules, dict):
-              for value in schedules.values():
-                  if isinstance(value, str):
-                      value = value.strip()
+              values = schedules.values()
+          else:
+              values = schedules
 
-                      if (
-                          len(value) == 5
-                          and value[2] == ":"
-                      ):
-                          schedule_times.append(value)
+          for value in values:
+              if not isinstance(value, str):
+                  continue
 
-          elif isinstance(schedules, list):
-              for value in schedules:
-                  if isinstance(value, str):
-                      value = value.strip()
+              value = value.strip()
 
-                      if (
-                          len(value) == 5
-                          and value[2] == ":"
-                      ):
-                          schedule_times.append(value)
+              if len(value) != 5 or value[2] != ":":
+                  continue
+
+              try:
+                  hour = int(value[:2])
+                  minute = int(value[3:5])
+
+                  if 0 <= hour <= 23 and 0 <= minute <= 59:
+                      schedule_times.append(value)
+
+              except ValueError:
+                  continue
 
           schedule_times = sorted(set(schedule_times))
 
-          print(
-              "Schedule times:",
-              schedule_times
-          )
+          print("Schedule times:", schedule_times)
 
           if not schedule_times:
               print("No schedules found.")
@@ -278,12 +274,8 @@ jobs:
                   entry.get("time")
               )
 
-              if feed_dt is None:
-                  continue
-
-              automatic_feeds.append(
-                  feed_dt
-              )
+              if feed_dt is not None:
+                  automatic_feeds.append(feed_dt)
 
           print(
               "Automatic feed records:",
@@ -292,7 +284,6 @@ jobs:
 
           def automatic_feed_exists(scheduled_dt):
               for feed_dt in automatic_feeds:
-
                   if (
                       feed_dt.year == scheduled_dt.year
                       and feed_dt.month == scheduled_dt.month
@@ -317,16 +308,88 @@ jobs:
           while current_date <= final_date:
 
               for schedule_time in schedule_times:
+                  hour = int(schedule_time[:2])
+                  minute = int(schedule_time[3:5])
 
-                  try:
-                      hour = int(
-                          schedule_time[:2]
+                  scheduled_dt = datetime(
+                      current_date.year,
+                      current_date.month,
+                      current_date.day,
+                      hour,
+                      minute,
+                      0,
+                      tzinfo=IST
+                  )
+
+                  if scheduled_dt <= window_start:
+                      continue
+
+                  if scheduled_dt > process_until:
+                      continue
+
+                  occurrence_id = (
+                      scheduled_dt.strftime("%Y-%m-%d")
+                      + "_"
+                      + schedule_time
+                  )
+
+                  print(
+                      "Checking:",
+                      occurrence_id
+                  )
+
+                  if checked.get(occurrence_id) is True:
+                      print("Already processed.")
+                      continue
+
+                  if automatic_feed_exists(scheduled_dt):
+                      print("RESULT: AUTOMATIC FEED")
+
+                      firebase_put(
+                          "/feedFailureChecks/"
+                          + occurrence_id,
+                          True
                       )
 
-                      minute = int(
-                          schedule_time[3:5]
-                      )
+                      continue
 
-                      if (
-                          hour < 0
-                          or hour > 23
+                  print("RESULT: FEED FAILED")
+
+                  failure = {
+                      "name": "Feed Failed",
+                      "time": int(
+                          scheduled_dt.timestamp() * 1000
+                      ),
+                      "schedule": schedule_time
+                  }
+
+                  firebase_post(
+                      "/history",
+                      failure
+                  )
+
+                  firebase_put(
+                      "/feedFailureChecks/"
+                      + occurrence_id,
+                      True
+                  )
+
+                  print(
+                      "Feed Failed added:",
+                      schedule_time
+                  )
+
+              current_date += timedelta(days=1)
+
+          firebase_put(
+              "/feedFailureChecker/lastRunAt",
+              now.isoformat()
+          )
+
+          print("Feed failure check completed.")
+
+          print(
+              "Last checker time:",
+              now.isoformat()
+          )
+          PY

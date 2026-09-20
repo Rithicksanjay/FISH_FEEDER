@@ -484,13 +484,18 @@ history.filter(item=>item.type==="Automatic").length;
 
 $("todayCount").textContent=
 history.filter(
-item=>new Date(item.time)>=startToday
+item=>
+(item.type==="Manual"||item.type==="Automatic")&&
+new Date(item.time)>=startToday
 ).length;
 
 $("weekCount").textContent=
 history.filter(
-item=>new Date(item.time)>=startWeek
+item=>
+(item.type==="Manual"||item.type==="Automatic")&&
+new Date(item.time)>=startWeek
 ).length;
+
 }
 
 function loadHistory(){
