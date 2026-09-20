@@ -56,7 +56,9 @@ jobs:
               )
 
               with urllib.request.urlopen(req, timeout=15) as response:
-                  result = json.loads(response.read().decode())
+                  result = json.loads(
+                      response.read().decode()
+                  )
 
               return result["idToken"]
 
@@ -75,7 +77,9 @@ jobs:
               req = urllib.request.Request(url)
 
               with urllib.request.urlopen(req, timeout=15) as response:
-                  return json.loads(response.read().decode())
+                  return json.loads(
+                      response.read().decode()
+                  )
 
           def firebase_put(path, data):
               url = (
@@ -239,7 +243,10 @@ jobs:
 
           schedule_times = sorted(set(schedule_times))
 
-          print("Schedule times:", schedule_times)
+          print(
+              "Schedule times:",
+              schedule_times
+          )
 
           if not schedule_times:
               print("No schedules found.")
@@ -274,7 +281,9 @@ jobs:
               if feed_dt is None:
                   continue
 
-              automatic_feeds.append(feed_dt)
+              automatic_feeds.append(
+                  feed_dt
+              )
 
           print(
               "Automatic feed records:",
@@ -282,25 +291,19 @@ jobs:
           )
 
           def automatic_feed_exists(scheduled_dt):
-              tolerance_seconds = 180
-
               for feed_dt in automatic_feeds:
-                  difference = abs(
-                      (
-                          feed_dt
-                          - scheduled_dt
-                      ).total_seconds()
-                  )
 
-                  if difference <= tolerance_seconds:
+                  if (
+                      feed_dt.year == scheduled_dt.year
+                      and feed_dt.month == scheduled_dt.month
+                      and feed_dt.day == scheduled_dt.day
+                      and feed_dt.hour == scheduled_dt.hour
+                      and feed_dt.minute == scheduled_dt.minute
+                  ):
                       print(
                           "Automatic Feed FOUND:",
                           scheduled_dt.strftime(
-                              "%Y-%m-%d %H:%M:%S"
-                          ),
-                          "actual:",
-                          feed_dt.strftime(
-                              "%Y-%m-%d %H:%M:%S"
+                              "%Y-%m-%d %H:%M"
                           )
                       )
 
@@ -316,105 +319,14 @@ jobs:
               for schedule_time in schedule_times:
 
                   try:
-                      hour = int(schedule_time[:2])
-                      minute = int(schedule_time[3:5])
+                      hour = int(
+                          schedule_time[:2]
+                      )
+
+                      minute = int(
+                          schedule_time[3:5]
+                      )
 
                       if (
                           hour < 0
                           or hour > 23
-                          or minute < 0
-                          or minute > 59
-                      ):
-                          continue
-
-                  except Exception:
-                      print(
-                          "Invalid schedule:",
-                          schedule_time
-                      )
-                      continue
-
-                  scheduled_dt = datetime(
-                      current_date.year,
-                      current_date.month,
-                      current_date.day,
-                      hour,
-                      minute,
-                      0,
-                      tzinfo=IST
-                  )
-
-                  if scheduled_dt <= window_start:
-                      continue
-
-                  if scheduled_dt > process_until:
-                      continue
-
-                  occurrence_id = (
-                      scheduled_dt.strftime("%Y-%m-%d")
-                      + "_"
-                      + schedule_time
-                  )
-
-                  print(
-                      "Checking:",
-                      occurrence_id
-                  )
-
-                  if checked.get(occurrence_id) is True:
-                      print("Already processed.")
-                      continue
-
-                  if automatic_feed_exists(scheduled_dt):
-                      print("RESULT: AUTOMATIC FEED")
-
-                      firebase_put(
-                          "/feedFailureChecks/"
-                          + occurrence_id,
-                          True
-                      )
-
-                      continue
-
-                  print("RESULT: FEED FAILED")
-
-                  failure = {
-                      "name": "Feed Failed",
-                      "time": int(
-                          scheduled_dt.timestamp()
-                          * 1000
-                      ),
-                      "schedule": schedule_time
-                  }
-
-                  firebase_post(
-                      "/history",
-                      failure
-                  )
-
-                  firebase_put(
-                      "/feedFailureChecks/"
-                      + occurrence_id,
-                      True
-                  )
-
-                  print(
-                      "Feed Failed added:",
-                      schedule_time
-                  )
-
-              current_date += timedelta(days=1)
-
-          firebase_put(
-              "/feedFailureChecker/lastRunAt",
-              now.isoformat()
-          )
-
-          print("Feed failure check completed.")
-
-          print(
-              "Last checker time:",
-              now.isoformat()
-          )
-
-          PY
