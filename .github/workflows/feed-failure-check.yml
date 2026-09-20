@@ -61,6 +61,7 @@ jobs:
               return result["idToken"]
 
           FIREBASE_ID_TOKEN = firebase_login()
+
           print("Firebase Authentication: SUCCESS")
 
           def firebase_get(path):
@@ -181,8 +182,14 @@ jobs:
 
           if last_run is None:
               window_start = now - timedelta(minutes=15)
+              print("No previous checker run found.")
           else:
               window_start = last_run - timedelta(minutes=3)
+
+              print(
+                  "Previous checker run:",
+                  last_run.strftime("%Y-%m-%d %H:%M:%S")
+              )
 
           process_until = now - timedelta(minutes=1)
 
@@ -246,7 +253,7 @@ jobs:
 
           automatic_feeds = []
 
-          for key, entry in history.items():
+          for entry in history.values():
               if not isinstance(entry, dict):
                   continue
 
@@ -349,7 +356,6 @@ jobs:
                       + schedule_time
                   )
 
-                  print()
                   print(
                       "Checking:",
                       occurrence_id
@@ -397,10 +403,7 @@ jobs:
                       schedule_time
                   )
 
-              current_date = (
-                  current_date
-                  + timedelta(days=1)
-              )
+              current_date += timedelta(days=1)
 
           firebase_put(
               "/feedFailureChecker/lastRunAt",
