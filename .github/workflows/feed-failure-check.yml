@@ -2,15 +2,21 @@ name: Feed Failure Checker
 
 on:
   schedule:
-    - cron: "* * * * *"
+    - cron: "*/5 * * * *"
+      timezone: "Asia/Kolkata"
+
   workflow_dispatch:
+
+concurrency:
+  group: feed-failure-checker
+  cancel-in-progress: false
 
 jobs:
   check-feed:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check scheduled feeds
+      - name: Check missed scheduled feeds
         env:
           FIREBASE_DB_URL: "https://smartfeeder-v01-default-rtdb.asia-southeast1.firebasedatabase.app"
           FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
@@ -28,6 +34,10 @@ jobs:
           FIREBASE_EMAIL = os.environ["FIREBASE_EMAIL"]
           FIREBASE_PASSWORD = os.environ["FIREBASE_PASSWORD"]
           FIREBASE_API_KEY = os.environ["FIREBASE_API_KEY"]
+
+          IST = timezone(
+              timedelta(hours=5, minutes=30)
+          )
 
           # --------------------------------------------------
           # FIREBASE LOGIN
@@ -56,7 +66,11 @@ jobs:
                   }
               )
 
-              with urllib.request.urlopen(req, timeout=15) as response:
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
                   result = json.loads(
                       response.read().decode()
                   )
@@ -82,7 +96,11 @@ jobs:
 
               req = urllib.request.Request(url)
 
-              with urllib.request.urlopen(req, timeout=15) as response:
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
                   return json.loads(
                       response.read().decode()
                   )
@@ -111,7 +129,11 @@ jobs:
                   }
               )
 
-              with urllib.request.urlopen(req, timeout=15) as response:
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
                   return response.read().decode()
 
           # --------------------------------------------------
@@ -138,8 +160,67 @@ jobs:
                   }
               )
 
-              with urllib.request.urlopen(req, timeout=15) as response:
+              with urllib.request.urlopen(
+                  req,
+                  timeout=15
+              ) as response:
+
                   return response.read().decode()
+
+          # --------------------------------------------------
+          # TIME PARSER
+          # --------------------------------------------------
+
+          def parse_history_time(value):
+
+              if value is None:
+                  return None
+
+              try:
+
+                  if isinstance(value, (int, float)):
+
+                      return datetime.fromtimestamp(
+                          float(value) / 1000,
+                          tz=IST
+                      )
+
+                  if isinstance(value, str):
+
+                      text = value.strip()
+
+                      if not text:
+                          return None
+
+                      if text.endswith("Z"):
+                          text = text[:-1] + "+00:00"
+
+                      parsed = datetime.fromisoformat(text)
+
+                      if parsed.tzinfo is None:
+                          parsed = parsed.replace(
+                              tzinfo=IST
+                          )
+                      else:
+                          parsed = parsed.astimezone(IST)
+
+                      return parsed
+
+              except Exception:
+                  return None
+
+              return None
+
+          # --------------------------------------------------
+          # CURRENT TIME
+          # --------------------------------------------------
+
+          now = datetime.now(IST)
+
+          print(
+              "Current IST:",
+              now.strftime("%Y-%m-%d %H:%M:%S")
+          )
 
           # --------------------------------------------------
           # GET FIREBASE DATA
@@ -148,6 +229,9 @@ jobs:
           schedules = firebase_get("/schedules")
           history = firebase_get("/history")
           checked = firebase_get("/feedFailureChecks")
+          last_run_raw = firebase_get(
+              "/feedFailureChecker/lastRunAt"
+          )
 
           if not isinstance(checked, dict):
               checked = {}
@@ -155,26 +239,144 @@ jobs:
           if not isinstance(history, dict):
               history = {}
 
-          print("Schedules:", schedules)
-          print("History entries:", len(history))
-
-          # --------------------------------------------------
-          # CURRENT IST TIME
-          # --------------------------------------------------
-
-          IST = timezone(
-              timedelta(hours=5, minutes=30)
+          print(
+              "Schedules:",
+              schedules
           )
-
-          now = datetime.now(IST)
 
           print(
-              "Current IST:",
-              now.strftime("%Y-%m-%d %H:%M")
+              "History entries:",
+              len(history)
           )
 
           # --------------------------------------------------
-          # BUILD RECENT HISTORY
+          # LAST SUCCESSFUL CHECK
+          # --------------------------------------------------
+
+          last_run = parse_history_time(
+              last_run_raw
+          )
+
+          if last_run is None:
+
+              # First run after installing this version.
+              # Only look back 15 minutes so old schedules
+              # are not suddenly marked as failed.
+
+              window_start = now - timedelta(
+                  minutes=15
+              )
+
+              print(
+                  "No previous checker time found."
+              )
+
+              print(
+                  "Initial check window:",
+                  window_start.strftime(
+                      "%Y-%m-%d %H:%M:%S"
+                  )
+              )
+
+          else:
+
+              window_start = last_run
+
+              print(
+                  "Previous checker run:",
+                  last_run.strftime(
+                      "%Y-%m-%d %H:%M:%S"
+                  )
+              )
+
+          # --------------------------------------------------
+          # DO NOT CHECK THE MOST RECENT 2 MINUTES
+          # --------------------------------------------------
+
+          # This gives the Wemos enough time to create
+          # its Automatic history entry after feeding.
+
+          process_until = now - timedelta(
+              minutes=2
+          )
+
+          if process_until < window_start:
+
+              print(
+                  "Nothing old enough to process yet."
+              )
+
+              firebase_put(
+                  "/feedFailureChecker/lastRunAt",
+                  now.isoformat()
+              )
+
+              raise SystemExit(0)
+
+          print(
+              "Processing from:",
+              window_start.strftime(
+                  "%Y-%m-%d %H:%M:%S"
+              )
+          )
+
+          print(
+              "Processing until:",
+              process_until.strftime(
+                  "%Y-%m-%d %H:%M:%S"
+              )
+          )
+
+          # --------------------------------------------------
+          # NORMALIZE SCHEDULES
+          # --------------------------------------------------
+
+          schedule_times = []
+
+          if isinstance(schedules, dict):
+
+              for value in schedules.values():
+
+                  if isinstance(value, str):
+
+                      value = value.strip()
+
+                      if len(value) == 5:
+                          schedule_times.append(value)
+
+          elif isinstance(schedules, list):
+
+              for value in schedules:
+
+                  if isinstance(value, str):
+
+                      value = value.strip()
+
+                      if len(value) == 5:
+                          schedule_times.append(value)
+
+          schedule_times = sorted(
+              set(schedule_times)
+          )
+
+          print(
+              "Normalized schedules:",
+              schedule_times
+          )
+
+          if not schedule_times:
+
+              print("No schedules found.")
+
+              firebase_put(
+                  "/feedFailureChecker/lastRunAt",
+                  now.isoformat()
+              )
+
+              raise SystemExit(0)
+
+          # --------------------------------------------------
+          # BUILD AUTOMATIC FEED HISTORY
           # --------------------------------------------------
 
           automatic_feeds = []
@@ -184,26 +386,29 @@ jobs:
               if not isinstance(entry, dict):
                   continue
 
-              name = entry.get("name")
+              name = str(
+                  entry.get("name", "")
+              ).strip()
 
-              if name != "Automatic Feed":
+              # IMPORTANT:
+              # Wemos writes "Automatic".
+              # "Automatic Feed" is also accepted for
+              # compatibility with older history records.
+
+              if name not in (
+                  "Automatic",
+                  "Automatic Feed"
+              ):
                   continue
 
-              feed_time = entry.get("time")
+              feed_dt = parse_history_time(
+                  entry.get("time")
+              )
 
-              if feed_time is None:
+              if feed_dt is None:
                   continue
 
-              try:
-                  feed_dt = datetime.fromtimestamp(
-                      float(feed_time) / 1000,
-                      tz=IST
-                  )
-
-                  automatic_feeds.append(feed_dt)
-
-              except Exception:
-                  continue
+              automatic_feeds.append(feed_dt)
 
           print(
               "Automatic feed records:",
@@ -211,44 +416,32 @@ jobs:
           )
 
           # --------------------------------------------------
-          # CHECK WHETHER AUTOMATIC FEED ACTUALLY HAPPENED
+          # CHECK SUCCESSFUL AUTOMATIC FEED
           # --------------------------------------------------
 
           def automatic_feed_exists(
-              scheduled_date,
-              schedule_time
+              scheduled_dt
           ):
 
-              hour, minute = map(
-                  int,
-                  schedule_time.split(":")
-              )
-
-              scheduled_dt = datetime(
-                  scheduled_date.year,
-                  scheduled_date.month,
-                  scheduled_date.day,
-                  hour,
-                  minute,
-                  0,
-                  tzinfo=IST
-              )
-
-              # Allow a small tolerance because the Wemos
-              # may write the history a few seconds late.
-              tolerance_seconds = 120
+              tolerance_seconds = 180
 
               for feed_dt in automatic_feeds:
 
                   difference = abs(
-                      (feed_dt - scheduled_dt).total_seconds()
+                      (
+                          feed_dt
+                          - scheduled_dt
+                      ).total_seconds()
                   )
 
                   if difference <= tolerance_seconds:
 
                       print(
                           "Automatic Feed FOUND:",
-                          schedule_time,
+                          scheduled_dt.strftime(
+                              "%Y-%m-%d %H:%M"
+                          ),
+                          "actual:",
                           feed_dt.strftime(
                               "%Y-%m-%d %H:%M:%S"
                           )
@@ -259,100 +452,140 @@ jobs:
               return False
 
           # --------------------------------------------------
-          # CHECK RECENT SCHEDULE WINDOW
+          # PROCESS EVERY SCHEDULED OCCURRENCE
+          # BETWEEN LAST CHECK AND NOW
           # --------------------------------------------------
 
-          current_total_minutes = (
-              now.hour * 60 + now.minute
-          )
+          cursor_date = window_start.date()
+          final_date = process_until.date()
 
-          minutes_to_check = set()
+          while cursor_date <= final_date:
 
-          # GitHub Actions may run late.
-          # Check the current minute and previous
-          # 15 minutes.
+              for schedule_time in schedule_times:
 
-          for offset in range(0, 16):
+                  try:
 
-              check_total = (
-                  current_total_minutes - offset
-              ) % 1440
+                      hour = int(
+                          schedule_time[:2]
+                      )
 
-              hour = check_total // 60
-              minute = check_total % 60
+                      minute = int(
+                          schedule_time[3:5]
+                      )
 
-              minutes_to_check.add(
-                  f"{hour:02d}:{minute:02d}"
-              )
+                      if (
+                          hour < 0
+                          or hour > 23
+                          or minute < 0
+                          or minute > 59
+                      ):
+                          continue
 
-          print(
-              "Checking schedule window:",
-              sorted(minutes_to_check)
-          )
+                  except Exception:
 
-          # --------------------------------------------------
-          # PROCESS SCHEDULES
-          # --------------------------------------------------
+                      print(
+                          "Invalid schedule:",
+                          schedule_time
+                      )
 
-          if not schedules:
+                      continue
 
-              print("No schedules found.")
-              print("Feed failure check completed.")
-              raise SystemExit(0)
-
-          for key, schedule_time in schedules.items():
-
-              if not isinstance(schedule_time, str):
-                  continue
-
-              schedule_time = schedule_time.strip()
-
-              if schedule_time not in minutes_to_check:
-                  continue
-
-              occurrence_id = (
-                  now.strftime("%Y-%m-%d")
-                  + "_"
-                  + schedule_time
-              )
-
-              print(
-                  "Checking scheduled feed:",
-                  schedule_time
-              )
-
-              # ------------------------------------------------
-              # ALREADY PROCESSED
-              # ------------------------------------------------
-
-              if checked.get(occurrence_id) is True:
-
-                  print(
-                      "Already checked:",
-                      schedule_time
+                  scheduled_dt = datetime(
+                      cursor_date.year,
+                      cursor_date.month,
+                      cursor_date.day,
+                      hour,
+                      minute,
+                      0,
+                      tzinfo=IST
                   )
 
-                  continue
+                  # Only process occurrences that actually
+                  # happened after the previous check.
 
-              # ------------------------------------------------
-              # IMPORTANT:
-              # CHECK ACTUAL AUTOMATIC FEED HISTORY
-              # ------------------------------------------------
+                  if scheduled_dt <= window_start:
+                      continue
 
-              feed_happened = automatic_feed_exists(
-                  now.date(),
-                  schedule_time
-              )
+                  if scheduled_dt > process_until:
+                      continue
 
-              if feed_happened:
-
-                  print(
-                      "Scheduled feed completed:",
-                      schedule_time
+                  occurrence_id = (
+                      scheduled_dt.strftime(
+                          "%Y-%m-%d"
+                      )
+                      + "_"
+                      + schedule_time
                   )
 
-                  # Mark as checked.
-                  # DO NOT create Feed Failed.
+                  print()
+                  print(
+                      "----------------------------------------"
+                  )
+
+                  print(
+                      "Checking:",
+                      occurrence_id
+                  )
+
+                  # ------------------------------------------------
+                  # ALREADY PROCESSED
+                  # ------------------------------------------------
+
+                  if checked.get(
+                      occurrence_id
+                  ) is True:
+
+                      print(
+                          "Already processed."
+                      )
+
+                      continue
+
+                  # ------------------------------------------------
+                  # DID THE WEMOS ACTUALLY FEED?
+                  # ------------------------------------------------
+
+                  if automatic_feed_exists(
+                      scheduled_dt
+                  ):
+
+                      print(
+                          "RESULT: AUTOMATIC FEED"
+                      )
+
+                      print(
+                          "No Feed Failed entry needed."
+                      )
+
+                      firebase_put(
+                          "/feedFailureChecks/"
+                          + occurrence_id,
+                          True
+                      )
+
+                      continue
+
+                  # ------------------------------------------------
+                  # NO AUTOMATIC FEED
+                  # ------------------------------------------------
+
+                  print(
+                      "RESULT: FEED FAILED"
+                  )
+
+                  failure = {
+                      "name": "Feed Failed",
+                      "time": int(
+                          scheduled_dt.timestamp()
+                          * 1000
+                      ),
+                      "schedule": schedule_time
+                  }
+
+                  firebase_post(
+                      "/history",
+                      failure
+                  )
 
                   firebase_put(
                       "/feedFailureChecks/"
@@ -360,51 +593,40 @@ jobs:
                       True
                   )
 
-                  continue
+                  print(
+                      "Feed Failed added:",
+                      schedule_time
+                  )
 
-              # ------------------------------------------------
-              # NO AUTOMATIC FEED FOUND
-              # ------------------------------------------------
-
-              print(
-                  "No Automatic Feed found:",
-                  schedule_time
+              cursor_date = (
+                  cursor_date
+                  + timedelta(days=1)
               )
 
-              failure = {
-                  "name": "Feed Failed",
-                  "time": int(
-                      datetime(
-                          now.year,
-                          now.month,
-                          now.day,
-                          int(schedule_time[:2]),
-                          int(schedule_time[3:]),
-                          0,
-                          tzinfo=IST
-                      ).timestamp() * 1000
-                  ),
-                  "schedule": schedule_time
-              }
+          # --------------------------------------------------
+          # SAVE LAST CHECK TIME
+          # --------------------------------------------------
 
-              firebase_post(
-                  "/history",
-                  failure
-              )
+          firebase_put(
+              "/feedFailureChecker/lastRunAt",
+              now.isoformat()
+          )
 
-              firebase_put(
-                  "/feedFailureChecks/"
-                  + occurrence_id,
-                  True
-              )
-
-              print(
-                  "Feed Failed added:",
-                  schedule_time
-              )
+          print()
+          print(
+              "========================================"
+          )
 
           print(
               "Feed failure check completed."
+          )
+
+          print(
+              "Last check saved."
+          )
+
+          print(
+              "========================================"
           )
 
           PY
